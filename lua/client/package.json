@@ -1,0 +1,76 @@
+{
+	"name": "lua-lang",
+	"description": "Lua language support",
+	"author": "Wiktor Adamski",
+	"license": "MIT",
+	"version": "0.0.1",
+	"publisher": "Muchtrix",
+	"engines": {
+		"vscode": "^1.16.0"
+	},
+	"categories": [
+		"Languages"
+	],
+	"activationEvents": [
+		"onLanguage:lua"
+	],
+	"main": "./out/src/extension",
+	"contributes": {
+		"languages": [
+			{
+				"id": "lua",
+				"aliases": [
+					"Lua",
+					"lua"
+				],
+				"extensions": [
+					".lua",
+					".p8",
+					".rockspec"
+				],
+				"configuration": "./language-configuration.json"
+			}
+		],
+		"grammars": [
+			{
+				"language": "lua",
+				"scopeName": "source.lua",
+				"path": "./syntaxes/lua.tmLanguage"
+			}
+		],
+		"configuration": {
+			"type": "object",
+			"title": "Example configuration",
+			"properties": {
+				"luaLang.maxNumberOfProblems": {
+					"scope": "resource",
+					"type": "number",
+					"default": 100,
+					"description": "Controls the maximum number of problems produced by the server."
+				},
+				"luaLang.trace.server": {
+					"scope": "window",
+					"type": "string",
+					"enum": [
+						"off",
+						"messages",
+						"verbose"
+					],
+					"default": "off",
+					"description": "Traces the communication between VSCode and the language server."
+				}
+			}
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "tsc -p ./",
+		"compile": "tsc -p ./",
+		"watch": "tsc -w -p ./",
+		"update-vscode": "node ./node_modules/vscode/bin/install",
+		"postinstall": "node ./node_modules/vscode/bin/install"
+	},
+	"dependencies": {
+		"vscode": "^1.1.5",
+		"vscode-languageclient": "^3.4.2"
+	}
+}
