@@ -6,6 +6,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const vscode_languageserver_1 = require("vscode-languageserver");
 const util_1 = require("util");
+const stdLib = require("./stdLib.json");
 // Create a connection for the server. The connection uses Node's IPC as a transport
 let connection = vscode_languageserver_1.createConnection(new vscode_languageserver_1.IPCMessageReader(process), new vscode_languageserver_1.IPCMessageWriter(process));
 // Create a simple text document manager. The text document manager
@@ -86,6 +87,20 @@ function TraverseTreeDown(p, node) {
             }
     }
     return node;
+}
+function ParseVarName(node) {
+    switch (node.type) {
+        case 'Identifier':
+            return node.name;
+        case 'IndexExpression':
+            return ParseVarName(node.base) + '.' + ParseVarName(node.index);
+        case 'MemberExpression':
+            return ParseVarName(node.identifier) + '.' + ParseVarName(node.base);
+        case 'NumericLiteral':
+        case 'StringLiteral':
+            return node.value.toString();
+    }
+    return null;
 }
 function FindIdentifiers(p, node) {
     function FindIdentifiers(p, node, res) {
@@ -181,15 +196,17 @@ function validateTextDocument(textDocument) {
     catch (e) {
         if (e instanceof SyntaxError) {
             let posInfo = e.message.substring(e.message.indexOf('['), e.message.indexOf(']'));
-            let message = e.message.substring(posInfo.length + 2, e.message.lastIndexOf(" near"));
-            let coords = posInfo.match('[0-9]+').map((x, _) => +x);
+            let regex = /[0-9]+/g;
+            let coords = posInfo.match(regex).map((x, _) => +x);
+            let pos = { line: coords[0] - 1, character: coords[1] };
+            let p = textDocument.positionAt(textDocument.offsetAt(pos) - 1);
             diagnostics.push({
                 severity: vscode_languageserver_1.DiagnosticSeverity.Error,
                 range: {
-                    start: { line: coords[0], character: coords[1] },
-                    end: { line: coords[0], character: coords[1] }
+                    start: p,
+                    end: p
                 },
-                message: message
+                message: e.message
             });
         }
     }
@@ -202,7 +219,6 @@ connection.onHover((params) => {
     if (tree === undefined)
         return undefined;
     let resNode = TraverseTreeDown(ToAstPosition(params.position), tree);
-    console.error(resNode);
     if (resNode !== undefined) {
         let markedString = AstNodeToMarkedString(resNode);
         if (markedString !== undefined)
@@ -222,7 +238,6 @@ connection.onDefinition((_params) => {
             return null;
         return ToFileLocation(def, _params.textDocument.uri);
     }
-    console.error(symbol);
     return null;
 });
 connection.onDidChangeWatchedFiles((_change) => {
@@ -237,25 +252,30 @@ connection.onCompletion((textDocumentPosition) => {
     let declarations = FindIdentifiers(ToAstPosition(textDocumentPosition.position), fileASTs[textDocumentPosition.textDocument.uri]);
     let res = [];
     for (let ident in declarations) {
+        let kind;
+        if (declarations[ident].type === 'FunctionDeclaration') {
+            kind = vscode_languageserver_1.CompletionItemKind.Function;
+        }
+        else {
+            kind = vscode_languageserver_1.CompletionItemKind.Variable;
+        }
         res.push({
             label: ident,
-            kind: vscode_languageserver_1.CompletionItemKind.Variable,
+            kind: kind,
             data: declarations[ident]
         });
     }
+    stdLib.Variables.forEach((v) => {
+        res.push({ label: v, kind: vscode_languageserver_1.CompletionItemKind.Variable });
+    });
+    stdLib.Functions.forEach((f) => {
+        res.push({ label: f, kind: vscode_languageserver_1.CompletionItemKind.Function });
+    });
     return res;
 });
 // This handler resolve additional information for the item selected in
 // the completion list.
 connection.onCompletionResolve((item) => {
-    if (item.data === 1) {
-        item.detail = 'TypeScript details',
-            item.documentation = 'TypeScript documentation';
-    }
-    else if (item.data === 2) {
-        item.detail = 'JavaScript details',
-            item.documentation = 'JavaScript documentation';
-    }
     return item;
 });
 /*

@@ -16,6 +16,7 @@ import {
 	//Position
 } from 'vscode-languageserver';
 import { debug } from 'util';
+import * as stdLib from './stdLib.json';
 
 // Create a connection for the server. The connection uses Node's IPC as a transport
 let connection: IConnection = createConnection(new IPCMessageReader(process), new IPCMessageWriter(process));
@@ -179,8 +180,6 @@ function FindIdentifiers(p: astPosition, node: astNode): {[id: string]: astNode}
 	return FindIdentifiers(p, node, {});
 }
 
-
-
 let printableType: {[type: string]: string} = {
 	'LabelStatement' : 'label',
 	'BreakStatement' : 'break',
@@ -249,15 +248,17 @@ function validateTextDocument(textDocument: TextDocument): void {
 	} catch (e) {
 		if (e instanceof SyntaxError){
 			let posInfo = e.message.substring(e.message.indexOf('['), e.message.indexOf(']'));
-			let message = e.message.substring(posInfo.length + 2, e.message.lastIndexOf(" near"));
-			let coords = posInfo.match('[0-9]+').map((x, _) => +x);
+			let regex = /[0-9]+/g;
+			let coords = posInfo.match(regex).map((x, _) => +x);
+			let pos = {line: coords[0] - 1, character: coords[1]};
+			let p = textDocument.positionAt(textDocument.offsetAt(pos) - 1);
 			diagnostics.push({
 				severity: DiagnosticSeverity.Error,
 				range: {
-					start: {line: coords[0], character: coords[1]},
-					end: {line: coords[0], character: coords[1]}
+					start: p,
+					end: p
 				},
-				message: message
+				message: e.message
 			});
 		}
 	}
@@ -301,27 +302,32 @@ connection.onCompletion((textDocumentPosition: TextDocumentPositionParams): Comp
 	// which code complete got requested. For the example we ignore this
 	// info and always provide the same completion items.
 	let declarations = FindIdentifiers(ToAstPosition(textDocumentPosition.position), fileASTs[textDocumentPosition.textDocument.uri]);
-	let res = [];
+	let res : any[] = [];
 	for(let ident in declarations){
+		let kind : CompletionItemKind;
+		if (declarations[ident].type === 'FunctionDeclaration'){
+			kind = CompletionItemKind.Function;
+		} else {
+			kind = CompletionItemKind.Variable;
+		}
 		res.push({
 			label: ident,
-			kind: CompletionItemKind.Variable,
+			kind: kind,
 			data: declarations[ident]
 		});
 	}
+	(<any>stdLib).Variables.forEach((v : string) => {
+		res.push({label: v, kind: CompletionItemKind.Variable});
+	});
+	(<any>stdLib).Functions.forEach((f : string) => {
+		res.push({label: f, kind: CompletionItemKind.Function});
+	});
 	return res;
 });
 
 // This handler resolve additional information for the item selected in
 // the completion list.
 connection.onCompletionResolve((item: CompletionItem): CompletionItem => {
-	if (item.data === 1) {
-		item.detail = 'TypeScript details',
-			item.documentation = 'TypeScript documentation'
-	} else if (item.data === 2) {
-		item.detail = 'JavaScript details',
-			item.documentation = 'JavaScript documentation'
-	}
 	return item;
 });
 
