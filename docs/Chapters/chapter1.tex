@@ -1,0 +1,15 @@
+\chapter{Preliminaria}
+Aby zrozumieć jak działa dostarczony serwer, należy wpierw zrozumieć architekturę rozszerzenia w systemie edytora Visual Studio Code, a także na czym polega omawiany protokół. W tym rozdziale poruszone zostaną:
+
+\begin{itemize}
+    \item Struktura wtyczki rozszerzającej działanie edytora.
+    \item Opis protokołu LSP.
+\end{itemize}
+
+\section{Struktura rozszerzenia Visual Studio Code}
+Sercem każdego rozszerzenia jest plik \texttt{package.json}, który przechowuje informacje na temat autora pakietu, warunki jego uruchomienia, a także wszystkie jego zależności. O ile sam serwer może być napisany w dowolnym języku, część bezpośrednio łącząca się z edytorem musi być napisana w języku JavaScript dla środowiska uruchomieniowego node.js. 
+
+Duża część kodu który jest wspólny dla wszystkich rozszerzeń jest możliwa do automatycznego stworzenia przez generator kodu Yeoman. Proste polecenie \texttt{yo code} przeprowadzi nas przez kreator wtyczek i utworzy dodatkowe pliki konfiguracyjne, które pozwolą korzystać z edytora VS Code jako środowiska developerskiego.
+
+\section{Protokół Language Server Protocol}
+Protokół LSP jest specjalizacją protokołu JSON-RPC, który przesyła dane między stronami komunikacji za pomocą obiektów JSON. Pierwszą wiadomością w trakcie połączenia jest wymiana możliwości zarówno klienta (np. czy edytor wspiera przemianowanie zmiennej), jak i serwera (np. wskazanie definicji danego symbolu, czy automatyczne uzupełnianie pisanego tekstu).

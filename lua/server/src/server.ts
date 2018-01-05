@@ -1,7 +1,3 @@
-/* --------------------------------------------------------------------------------------------
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
- * ------------------------------------------------------------------------------------------ */
 'use strict';
 
 import {
@@ -10,22 +6,13 @@ import {
 	CompletionItemKind,
 	Position,
 	Range,
-//	DocumentLink,
 	Location,
-	//MarkedString, MarkupContent
-	//Position
 } from 'vscode-languageserver';
 import { debug } from 'util';
 import * as stdLib from './stdLib.json';
 
-// Create a connection for the server. The connection uses Node's IPC as a transport
 let connection: IConnection = createConnection(new IPCMessageReader(process), new IPCMessageWriter(process));
-
-// Create a simple text document manager. The text document manager
-// supports full document sync only
 let documents: TextDocuments = new TextDocuments();
-// Make the text document manager listen on the connection
-// for open, change and close text document events
 documents.listen(connection);
 
 interface astPosition {
@@ -205,38 +192,28 @@ function AstNodeToMarkedString(node: astNode) {
 let luaparser = require('luaparse');
 let fileASTs: {[id: string]: astNode} = {};
 
-// After the server has started the client sends an initilize request. The server receives
-// in the passed params the rootPath of the workspace plus the client capabilites. 
 let workspaceRoot: string;
 connection.onInitialize((params): InitializeResult => {
 	workspaceRoot = params.rootPath;
 	debug(workspaceRoot)
 	return {
 		capabilities: {
-			// Tell the client that the server works in FULL text document sync mode
 			textDocumentSync: documents.syncKind,
-			// Tell the client that the server support code complete
 			completionProvider: {
 				resolveProvider: true
 			},
 			hoverProvider: true,
-
 			definitionProvider: true
 		}
 	}
 });
 
-// The content of a text document has changed. This event is emitted
-// when the text document first opened or when its content has changed.
 documents.onDidChangeContent((change) => {
 	validateTextDocument(change.document);
 });
 
 
-// The settings have changed. Is send on server activation
-// as well.
 connection.onDidChangeConfiguration((_) => {
-	// Revalidate any open text documents
 	documents.all().forEach(validateTextDocument);
 });
 
@@ -323,12 +300,6 @@ connection.onCompletion((textDocumentPosition: TextDocumentPositionParams): Comp
 		res.push({label: f, kind: CompletionItemKind.Function});
 	});
 	return res;
-});
-
-// This handler resolve additional information for the item selected in
-// the completion list.
-connection.onCompletionResolve((item: CompletionItem): CompletionItem => {
-	return item;
 });
 
 /*
