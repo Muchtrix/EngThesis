@@ -4,7 +4,8 @@ Aby zrozumieć jak działa dostarczony serwer, należy wpierw zrozumieć archite
 \begin{itemize}
     \item Struktura wtyczki rozszerzającej działanie edytora.
     \item Opis protokołu LSP.
-    \item Visual Studio a Visual Studio Code
+    \item Visual Studio a Visual Studio Code.
+    \item Parser Luaparse.
 \end{itemize}
 
 \section{Struktura rozszerzenia Visual Studio Code}
@@ -56,7 +57,7 @@ O ile serwer LSP może być napisany w dowolnym języku, część bezpośrednio 
 Duża część kodu który jest wspólny dla wszystkich rozszerzeń jest możliwa do automatycznego stworzenia przez generator kodu Yeoman. Proste polecenie \texttt{yo code} przeprowadzi nas przez kreator wtyczek i utworzy dodatkowe pliki konfiguracyjne, które pozwolą korzystać z edytora VS Code jako środowiska developerskiego.
 
 \section{Protokół Language Server Protocol}
-Protokół LSP jest specjalizacją protokołu JSON-RPC, który przesyła dane między stronami komunikacji za pomocą obiektów JSON. Pierwszą wiadomością w trakcie połączenia jest wymiana możliwości zarówno klienta (np. czy edytor wspiera przemianowanie zmiennej), jak i serwera (np. wskazanie definicji danego symbolu, czy automatyczne uzupełnianie pisanego tekstu). Poniżej przedstawiam przykładowe zapytanie klienta:
+Protokół LSP \cite{docs} jest specjalizacją protokołu JSON-RPC, który przesyła dane między stronami komunikacji za pomocą obiektów JSON. Klient (edytor kodu) wysyła zapytania do serwera (program wspomagający) odpowiadające różnym akcjom podejmowanym przez programistę, np. zapytanie się o miejsce deklaracji danej zmiennej. Pierwszą wiadomością w trakcie połączenia jest wymiana możliwości zarówno klienta (np. czy edytor wspiera przemianowanie zmiennej), jak i serwera (np. wskazanie definicji danego symbolu lub automatyczne uzupełnianie pisanego tekstu). Poniżej przedstawiam przykładowe zapytanie klienta:
 
 \begin{lstlisting}
     {
@@ -71,3 +72,70 @@ Protokół LSP jest specjalizacją protokołu JSON-RPC, który przesyła dane mi
 
 \section{Visual Studio (Code)}
 Wiele osób nie rozróżnia od siebie dwóch produktów Microsoftu. Visual Studio to zintegrowane środowisko programistyczne, nastawione głównie na pisanie programów w języku C\#. Visual Studio Code jest natomiast otwartoźródłowym edytorem kodu opartym na silniku renderującym Electron od firmy Github, co sprawia, że jest on dosyć podobny do edytora Atom (również pod względem metodologii wtyczek). 
+
+\section{Biblioteka Luaparse i drzewa rozbioru}
+Aby dostarczać jakiekolwiek sensowne informacje na temat kodu, potrzebne jest jego sparsowanie. Zajmuje się tym biblioteka Luaparse \cite{luaparse}, która produkuje abstrakcyjne drzewa rozbioru programów napisanych w języku Lua. Drzewa reprezentowane za pomocą obiektów JavaScript są inspirowane na specyfikacji Mozilla Parser API. Przykładowo wyrażenie:
+
+\begin{lstlisting}[language={[5.3]Lua}]
+foo = "bar"
+\end{lstlisting}
+zostanie przełożone na drzewo:
+
+\begin{lstlisting}
+    {
+        "type":"Chunk",
+        "body":[{
+            "type":"AssignmentStatement",
+            "variables":[{
+                "type":"Identifier",
+                "name":"foo",
+                "loc":{
+                    "start":{
+                        "line":1,
+                        "column":0
+                    },
+                    "end":{
+                        "line":1,
+                        "column":3
+                    }
+                }
+            }],
+            "init":[{
+                "type":"StringLiteral",
+                "value":"bar",
+                "raw":"\"bar\"",
+                "loc":{
+                    "start":{
+                        "line":1,
+                        "column":6
+                    },
+                    "end":{
+                        "line":1,
+                        "column":11
+                    }
+                }
+            }],
+            "loc":{
+                "start":{
+                    "line":1,
+                    "column":0
+                },
+                "end":{
+                    "line":1,
+                    "column":11
+                }
+            }
+        }],
+        "loc":{
+            "start":{
+                "line":1,
+                "column":0
+            },
+            "end":{
+                "line":1,
+                "column":11
+            }
+        },
+        "comments":[]
+    }
+\end{lstlisting}

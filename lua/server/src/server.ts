@@ -192,10 +192,7 @@ function AstNodeToMarkedString(node: astNode) {
 let luaparser = require('luaparse');
 let fileASTs: {[id: string]: astNode} = {};
 
-let workspaceRoot: string;
-connection.onInitialize((params): InitializeResult => {
-	workspaceRoot = params.rootPath;
-	debug(workspaceRoot)
+connection.onInitialize((_params): InitializeResult => {
 	return {
 		capabilities: {
 			textDocumentSync: documents.syncKind,
@@ -301,26 +298,6 @@ connection.onCompletion((textDocumentPosition: TextDocumentPositionParams): Comp
 	});
 	return res;
 });
-
-/*
-connection.onDidOpenTextDocument((params) => {
-	// A text document got opened in VSCode.
-	// params.uri uniquely identifies the document. For documents store on disk this is a file URI.
-	// params.text the initial full content of the document.
-	connection.console.log(`${params.textDocument.uri} opened.`);
-});
-connection.onDidChangeTextDocument((params) => {
-	// The content of a text document did change in VSCode.
-	// params.uri uniquely identifies the document.
-	// params.contentChanges describe the content changes to the document.
-	connection.console.log(`${params.textDocument.uri} changed: ${JSON.stringify(params.contentChanges)}`);
-});
-connection.onDidCloseTextDocument((params) => {
-	// A text document got closed in VSCode.
-	// params.uri uniquely identifies the document.
-	connection.console.log(`${params.textDocument.uri} closed.`);
-});
-*/
 
 // Listen on the connection
 connection.listen();
