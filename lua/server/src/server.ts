@@ -8,8 +8,8 @@ import {
 	Range,
 	Location,
 } from 'vscode-languageserver';
-import { debug } from 'util';
 import * as stdLib from './stdLib.json';
+import { defaultCipherList } from 'constants';
 
 let connection: IConnection = createConnection(new IPCMessageReader(process), new IPCMessageWriter(process));
 let documents: TextDocuments = new TextDocuments();
@@ -43,6 +43,13 @@ interface astNode {
 	variable?: astNode
 	index?: astNode
 	value?: number | string
+}
+
+enum identifierType {Number, String, Function, Table, Null, Unknown}
+
+interface identifierInfo {
+	node: astNode
+	type: identifierType
 }
 
 function ToAstPosition(pos: Position) {
@@ -132,26 +139,41 @@ function ParseVarName(node:astNode): string{
 	return null;
 }
 
-function FindIdentifiers(p: astPosition, node: astNode): {[id: string]: astNode}{
-	function FindIdentifiers(p: astPosition, node: astNode, res: {[id: string]: astNode}): {[id: string]: astNode} {
-		if (node.type == 'Chunk' && node.globals !== undefined) {
-			for (let g of node.globals){
-				res[g.name] = g;
-			}
+function FindIdentifiers(p: astPosition, node: astNode): {[id: string]: identifierInfo}{
+	function astTypeToSymbolType(type: string) : identifierType {
+		switch(type){
+			case 'StringLiteral':
+				return identifierType.String;
+			case 'NumericLiteral':
+				return identifierType.Number;
+			case 'NilLiteral':
+				return identifierType.Null;
+			case 'TableConstructor':
+				return identifierType.Table;
+			default:
+				return identifierType.Unknown;
 		}
+	}
+	function FindIdentifiers(p: astPosition, node: astNode, res: {[id: string]: identifierInfo}): {[id: string]: identifierInfo} {
 		switch(node.type){
 			case 'AssignmentStatement':
 			case 'LocalStatement':
+				for(let i in node.variables){
+					let id = node.variables[i];
+					let t = astTypeToSymbolType(node.init[i].type);
+					if (t === identifierType.Unknown && node.init[i].name in res) t = res[node.init[i].name].type;
+					res[id.name] = {node: id, type: t};
+				}
 			case 'ForGenericStatement':
 				for(let i of node.variables){
-					res[i.name] = i;
+					res[i.name] = {node: i, type: identifierType.Unknown };
 				}
 				break;
 			case 'FunctionDeclaration':
-				res[node.identifier.name] = node.identifier;
+				res[node.identifier.name] = {node: node.identifier, type: identifierType.Function};
 				break;
 			case 'ForNumericStatement':
-				res[node.variable.name] = node.variable;
+				res[node.variable.name] = {node: node.variable, type: identifierType.Number};
 				break;
 		}
 
@@ -210,7 +232,7 @@ documents.onDidChangeContent((change) => {
 });
 
 
-connection.onDidChangeConfiguration((_) => {
+connection.onDidChangeConfiguration((_params) => {
 	documents.all().forEach(validateTextDocument);
 });
 
@@ -259,16 +281,10 @@ connection.onDefinition((_params: TextDocumentPositionParams) => {
 	if (symbol.type == 'Identifier'){
 		let def =  FindIdentifiers(ToAstPosition(_params.position), fileASTs[_params.textDocument.uri])[symbol.name];
 		if (def === undefined) return null;
-		return ToFileLocation(def, _params.textDocument.uri);
+		return ToFileLocation(def.node, _params.textDocument.uri);
 	}
 	return null;
 });
-
-connection.onDidChangeWatchedFiles((_change) => {
-	// Monitored files have change in VSCode
-	connection.console.log('We recevied an file change event');
-});
-
 
 // This handler provides the initial list of the completion items.
 connection.onCompletion((textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
@@ -279,7 +295,7 @@ connection.onCompletion((textDocumentPosition: TextDocumentPositionParams): Comp
 	let res : any[] = [];
 	for(let ident in declarations){
 		let kind : CompletionItemKind;
-		if (declarations[ident].type === 'FunctionDeclaration'){
+		if (declarations[ident].type === identifierType.Function){
 			kind = CompletionItemKind.Function;
 		} else {
 			kind = CompletionItemKind.Variable;

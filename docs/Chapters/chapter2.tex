@@ -1,5 +1,31 @@
 \chapter{Proces odpowiedzi na zapytania}
-
 Dysponując parserem kodu Lua, wystarczy odpowiednio przechodzić generowane przez niego drzewa, w celu odpowiedzi na poszczególne zapytania klienta. Punktem wejścia dla projektu będącego częścią niniejszej pracy jest artykuł \cite{lsp_sample} opisujący utworzenie prostego serwera LSP.
 
 \section{Zapytanie \texttt{Initialize}}
+W odpowiedzi na to zapytanie serwer zwraca informacje na temat jego możliwości. W przypadku tej pracy są to:
+
+\begin{itemize}
+    \item Znalezienie definicji danej zmiennej lub funkcji.
+    \item Automatyczne sugestie pisanego kodu.
+    \item Wyświetlenie informacji na temat danego symbolu.
+\end{itemize}
+
+\section{Komunikaty generujące drzewa}
+\subsection{Komunikat \texttt{DidChangeTextDocument}}
+Komunikat \texttt{DidChangeTextDocument} informuje serwer, że użytkownik dokonał zmian w danym pliku. Uruchomiony zostaje wtedy parser, który czyta treść rzeczonego pliku (możliwością jest pracowanie na samej treści zmiany, jednakże wiązałoby się to z koniecznością napisania własnego parsera wspierającego inkrementalne zmiany w parsowanym tekście). Jeżeli parser napotkał jakiś błąd, jest on zwracany z powrotem do klienta i wyświetlany użytkownikowi pod postacią czerwonego podkreślenia problematycznego fragmentu kodu. Przy udanym parsowaniu otrzymane drzewo jest zapisywane w pamięci, aby można było je odwiedzić przy odpowiadaniu na inne zapytania.
+
+\subsection{Komunikat \texttt{DicChangeConfiguration}}
+Komunikat \texttt{DidChangeConfiguration} informuje nas, że użytkownik zmienił ustawienia edytora, co mogło wpłynąć na pliki w niekontrolowany przez nas sposób. W takim przypadku następuje ponowne parsowanie wszystkich otwartych dokumentów analogicznie do komunikatu \texttt{DidChangeTextDocument}.
+
+\section{Zapytania przechodzące po drzewie}
+\subsection{Funkcja \texttt{TraverseTreeDown}}
+Każde z zapytań które mają w efekcie przejść się po drzewie rozbioru dostarcza nam informacje na temat pozycji w pliku na której się znajduje kursor. W takim razie wydzielona została funkcjonalność tłumaczenia pozycji na węzeł drzewa. Ponieważ każdy z węzłów drzewa rozbioru zawiera informację na temat zakresu tegoż węzła, wystarczy przejść się wgłąb drzewa tak długo jak szukana pozycja znajduje się wewnątrz zakresu przeszukiwanego wierzchołka. Funkcja zwraca odnaleziony wierzchołek.
+
+\subsection{Zapytanie \texttt{Hover}}
+Zapytanie \texttt{Hover} pyta się o możliwe informacje do wyświetlenia gdy użytkownik najedzie kursorem myszy na daną pozycję w pliku. Po znalezieniu najlepiej pasującego wierzchołka za pomocą funkcji \texttt{TraverseTreeDown}, zwracany jest komunikat którego dokładna treść jest określana na podstawie typu wierzchołka (np. dla funkcji będzie to jej nazwa i lista argumentów, a dla zmiennej jej typ).
+
+\subsection{Zapytanie \texttt{GotoDefinition}}
+Zapytanie \texttt{GotoDefinition} odpowiada akcji polegającej na szukaniu miejsca zdefiniowania danego symbolu w kodzie. Po znalezieniu szukanego symbolu następuje ponowne przejście po drzewie w celu odnalezienia najpóźniejszej definicji tegoż symbolu (w języku Lua symbole mogą być definiowane na nowo w trakcie działania programu, a także przesłaniane za pomocą słowa kluczowego \texttt{local}). Zwracana jest pozycja odnalezionej definicji.
+
+\subsection{Zapytanie \texttt{Completion}}
+Zapytanie \texttt{Completion} jest wysyłane przez klienta w celu odpytania serwera na temat możliwego dokończenia aktualnie pisanego tekstu. Również i w tym przypadku dostarczana jest pozycja kursora, jednakże serwer nie szuka aktualnie edytowanego wierzchołka, tylko listę symboli które zostały zdefiniowane i są dostępne w danym kontekście. Lista odnalezionych symboli jest później rozszerzana o funkcje i zmienne zdefiniowane w bibliotece standardowej Lua (informacje na ich temat znajdują się w osobnym pliku JSON, który został utworzony na podstawie dokumentacji języka \cite{lua_lib}).
