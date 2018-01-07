@@ -1,0 +1,17 @@
+\chapter{Część kliencka rozszerzenia}
+W przypadku edytora Visual Studio Code, serwer LSP nie komunikuje się bezpośrednio z edytorem, potrzebny jest dodatkowy adapter w postaci osobnego małego rozszerzenia. W dodatku nie wszystkie możliwości edytora są wspierane przez protokół. Część kliencka rozszerzenia zatem ma 2 funkcjonalności:
+
+\begin{enumerate}
+    \item Uruchomienie serwera i komunikacja z nim.
+    \item Udostępnienie funkcjonalności które nie są wspierane przez protokół LSP.
+\end{enumerate}
+
+\section{Komunikacja z serwerem}
+Ponieważ zarówno klient jak i serwer LSP są napisane w środowisku Node.js, możliwe było wykorzystanie bibliotek udostępnionych przez twórców edytora, przez co nawiązanie połączenia i jego obsługa ogranicza się do wskazania pliku serwera. Dodatkowo moduł serwera zostaje przy utworzeniu dodany do listy obiektów usuwanych przy zamknięciu rozszerzenia (np. zamknięte zostały wszystkie pliki Lua lub został wyłączony edytor).
+
+\section{Dodatkowe funkcjonalności}
+\begin{enumerate}
+    \item kolorowanie składni
+    \item rejestracja nowego języka
+    \item obsługa ustawień
+\end{enumerate}
