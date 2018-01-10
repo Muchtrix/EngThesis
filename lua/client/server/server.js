@@ -1,20 +1,19 @@
-/* --------------------------------------------------------------------------------------------
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
- * ------------------------------------------------------------------------------------------ */
 'use strict';
 Object.defineProperty(exports, "__esModule", { value: true });
 const vscode_languageserver_1 = require("vscode-languageserver");
-const util_1 = require("util");
 const stdLib = require("./stdLib.json");
-// Create a connection for the server. The connection uses Node's IPC as a transport
 let connection = vscode_languageserver_1.createConnection(new vscode_languageserver_1.IPCMessageReader(process), new vscode_languageserver_1.IPCMessageWriter(process));
-// Create a simple text document manager. The text document manager
-// supports full document sync only
 let documents = new vscode_languageserver_1.TextDocuments();
-// Make the text document manager listen on the connection
-// for open, change and close text document events
 documents.listen(connection);
+var identifierType;
+(function (identifierType) {
+    identifierType[identifierType["Number"] = 0] = "Number";
+    identifierType[identifierType["String"] = 1] = "String";
+    identifierType[identifierType["Function"] = 2] = "Function";
+    identifierType[identifierType["Table"] = 3] = "Table";
+    identifierType[identifierType["Null"] = 4] = "Null";
+    identifierType[identifierType["Unknown"] = 5] = "Unknown";
+})(identifierType || (identifierType = {}));
 function ToAstPosition(pos) {
     return { line: pos.line + 1, column: pos.character };
 }
@@ -103,25 +102,41 @@ function ParseVarName(node) {
     return null;
 }
 function FindIdentifiers(p, node) {
-    function FindIdentifiers(p, node, res) {
-        if (node.type == 'Chunk' && node.globals !== undefined) {
-            for (let g of node.globals) {
-                res[g.name] = g;
-            }
+    function astTypeToSymbolType(type) {
+        switch (type) {
+            case 'StringLiteral':
+                return identifierType.String;
+            case 'NumericLiteral':
+                return identifierType.Number;
+            case 'NilLiteral':
+                return identifierType.Null;
+            case 'TableConstructor':
+                return identifierType.Table;
+            default:
+                return identifierType.Unknown;
         }
+    }
+    function FindIdentifiers(p, node, res) {
         switch (node.type) {
             case 'AssignmentStatement':
             case 'LocalStatement':
+                for (let i in node.variables) {
+                    let id = node.variables[i];
+                    let t = astTypeToSymbolType(node.init[i].type);
+                    if (t === identifierType.Unknown && node.init[i].name in res)
+                        t = res[node.init[i].name].type;
+                    res[id.name] = { node: id, type: t };
+                }
             case 'ForGenericStatement':
                 for (let i of node.variables) {
-                    res[i.name] = i;
+                    res[i.name] = { node: i, type: identifierType.Unknown };
                 }
                 break;
             case 'FunctionDeclaration':
-                res[node.identifier.name] = node.identifier;
+                res[node.identifier.name] = { node: node.identifier, type: identifierType.Function };
                 break;
             case 'ForNumericStatement':
-                res[node.variable.name] = node.variable;
+                res[node.variable.name] = { node: node.variable, type: identifierType.Number };
                 break;
         }
         if (inRange(p, node.loc) && node.body !== undefined) {
@@ -157,17 +172,10 @@ function AstNodeToMarkedString(node) {
 }
 let luaparser = require('luaparse');
 let fileASTs = {};
-// After the server has started the client sends an initilize request. The server receives
-// in the passed params the rootPath of the workspace plus the client capabilites. 
-let workspaceRoot;
-connection.onInitialize((params) => {
-    workspaceRoot = params.rootPath;
-    util_1.debug(workspaceRoot);
+connection.onInitialize((_params) => {
     return {
         capabilities: {
-            // Tell the client that the server works in FULL text document sync mode
             textDocumentSync: documents.syncKind,
-            // Tell the client that the server support code complete
             completionProvider: {
                 resolveProvider: true
             },
@@ -176,15 +184,10 @@ connection.onInitialize((params) => {
         }
     };
 });
-// The content of a text document has changed. This event is emitted
-// when the text document first opened or when its content has changed.
 documents.onDidChangeContent((change) => {
     validateTextDocument(change.document);
 });
-// The settings have changed. Is send on server activation
-// as well.
-connection.onDidChangeConfiguration((_) => {
-    // Revalidate any open text documents
+connection.onDidChangeConfiguration((_params) => {
     documents.all().forEach(validateTextDocument);
 });
 function validateTextDocument(textDocument) {
@@ -236,13 +239,9 @@ connection.onDefinition((_params) => {
         let def = FindIdentifiers(ToAstPosition(_params.position), fileASTs[_params.textDocument.uri])[symbol.name];
         if (def === undefined)
             return null;
-        return ToFileLocation(def, _params.textDocument.uri);
+        return ToFileLocation(def.node, _params.textDocument.uri);
     }
     return null;
-});
-connection.onDidChangeWatchedFiles((_change) => {
-    // Monitored files have change in VSCode
-    connection.console.log('We recevied an file change event');
 });
 // This handler provides the initial list of the completion items.
 connection.onCompletion((textDocumentPosition) => {
@@ -253,7 +252,7 @@ connection.onCompletion((textDocumentPosition) => {
     let res = [];
     for (let ident in declarations) {
         let kind;
-        if (declarations[ident].type === 'FunctionDeclaration') {
+        if (declarations[ident].type === identifierType.Function) {
             kind = vscode_languageserver_1.CompletionItemKind.Function;
         }
         else {
@@ -273,30 +272,6 @@ connection.onCompletion((textDocumentPosition) => {
     });
     return res;
 });
-// This handler resolve additional information for the item selected in
-// the completion list.
-connection.onCompletionResolve((item) => {
-    return item;
-});
-/*
-connection.onDidOpenTextDocument((params) => {
-    // A text document got opened in VSCode.
-    // params.uri uniquely identifies the document. For documents store on disk this is a file URI.
-    // params.text the initial full content of the document.
-    connection.console.log(`${params.textDocument.uri} opened.`);
-});
-connection.onDidChangeTextDocument((params) => {
-    // The content of a text document did change in VSCode.
-    // params.uri uniquely identifies the document.
-    // params.contentChanges describe the content changes to the document.
-    connection.console.log(`${params.textDocument.uri} changed: ${JSON.stringify(params.contentChanges)}`);
-});
-connection.onDidCloseTextDocument((params) => {
-    // A text document got closed in VSCode.
-    // params.uri uniquely identifies the document.
-    connection.console.log(`${params.textDocument.uri} closed.`);
-});
-*/
 // Listen on the connection
 connection.listen();
 //# sourceMappingURL=server.js.map

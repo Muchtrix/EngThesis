@@ -8,5 +8,6 @@
         "lstlisting",
         "luaparse",
         "schöldström"
-    ]
+    ],
+    "latex-workshop.debug.showUpdateMessage": false
 }
