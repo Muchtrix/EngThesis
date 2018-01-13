@@ -1,7 +1,164 @@
 \chapter{Implementacja serwera LSP}
 Dysponując parserem kodu Lua, wystarczy odpowiednio przechodzić generowane przez niego drzewa, w celu odpowiedzi na poszczególne zapytania klienta. Punktem wejścia dla projektu będącego częścią niniejszej pracy jest artykuł \cite{lsp_sample} opisujący utworzenie prostego serwera LSP.
 
+\begin{figure}[H]
+    \centering
+\begin{tabular}{|c|c|}
+\hline
+Nazwa metody & Kierunek komunikacji Klient - Serwer\\
+\hline
+Initialize & $\hookleftarrow$ \\   
+\hline
+Initialized & $\rightarrow$ \\
+\hline
+Shutdown & $\hookleftarrow$ \\   
+\hline
+Exit & $\rightarrow$ \\
+\hline
+\end{tabular}
+\end{figure}
+
 \section{Zapytanie \texttt{Initialize}}
+\begin{lstlisting}[language=JavaScript, basicstyle=\fontsize{9}{10}\ttfamily]
+interface InitializeParams {
+    processId: number | null
+    rootPath?: string | null
+    rootUri: DocumentUri | null
+    initializationOptions?: any
+    capabilities: ClientCapabilities
+    trace?: 'off' | 'messages' | 'verbose'
+}
+
+interface ClientCapabilities {
+    workspace?: WorkspaceClientCapabilities
+    textDocument?: TextDocumentClientCapabilities
+    experimental?: any
+}
+
+interface WorkspaceClientCapabilities {
+    applyEdit?: boolean
+    workspaceEdit?: { documentChanges?: boolean }
+    didChangeConfiguration?: { dynamicRegistration?: boolean }
+    didChangeWatchedFiles?: { dynamicRegistration?: boolean }
+    symbol?: {
+        dynamicRegistration?: boolean
+        symbolKind?: { valueSet?: SymbolKind[] }
+    }
+    executeCommand?: { dynamicRegistration?: boolean }
+}
+
+interface TextDocumentClientCapabilities {
+    synchronization?: {
+        dynamicRegistration?: boolean
+        willSave?: boolean
+        willSaveWaitUntil?: boolean
+        didSave?: boolean
+    }
+    completion?: {
+        dynamicRegistration?: boolean
+        completionItem?: {
+            snippetSupport?: boolean
+            commitCharactersSupport?: boolean
+            documentationFormat?: MarkupKind[]
+        }
+        completionItemKind?: { valueSet?: CompletionItemKind[] }
+        contextSupport?: boolean		
+    }
+    hover?: {
+        dynamicRegistration?: boolean
+        contentFormat?: MarkupKind[]
+    }
+    signatureHelp?: {
+        dynamicRegistration?: boolean
+        signatureInformation?: { documentationFormat?: MarkupKind[] }
+    }
+    references?: { dynamicRegistration?: boolean }
+    documentHighlight?: { dynamicRegistration?: boolean }
+    documentSymbol?: {
+        dynamicRegistration?: boolean
+        symbolKind?: { valueSet?: SymbolKind[] }
+    }
+    formatting?: { dynamicRegistration?: boolean }
+    rangeFormatting?: { dynamicRegistration?: boolean }
+    onTypeFormatting?: { dynamicRegistration?: boolean }
+    definition?: { dynamicRegistration?: boolean }
+    codeAction?: { dynamicRegistration?: boolean }
+    codeLens?: { dynamicRegistration?: boolean }
+    documentLink?: { dynamicRegistration?: boolean }
+	rename?: { dynamicRegistration?: boolean }
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=JavaScript, basicstyle=\fontsize{9}{10}\ttfamily]
+interface InitializeResult {
+    capabilities: ServerCapabilities
+}
+
+interface ServerCapabilities {
+    textDocumentSync?: TextDocumentSyncOptions | number
+    hoverProvider?: boolean
+    completionProvider?: CompletionOptions
+    signatureHelpProvider?: SignatureHelpOptions
+    definitionProvider?: boolean
+    referencesProvider?: boolean
+    documentHighlightProvider?: boolean
+    documentSymbolProvider?: boolean
+    workspaceSymbolProvider?: boolean
+    codeActionProvider?: boolean
+    codeLensProvider?: CodeLensOptions
+    documentFormattingProvider?: boolean
+    documentRangeFormattingProvider?: boolean
+    documentOnTypeFormattingProvider?: DocumentOnTypeFormattingOptions
+    renameProvider?: boolean
+    documentLinkProvider?: DocumentLinkOptions
+    executeCommandProvider?: ExecuteCommandOptions
+    experimental?: any
+}
+
+namespace TextDocumentSyncKind {
+     const None = 0
+     const Full = 1
+     const Incremental = 2
+}
+
+interface CompletionOptions {
+    resolveProvider?: boolean
+    triggerCharacters?: string[]
+}
+
+interface SignatureHelpOptions {
+    triggerCharacters?: string[]
+}
+
+interface CodeLensOptions {
+    resolveProvider?: boolean
+}
+
+interface DocumentOnTypeFormattingOptions {
+    firstTriggerCharacter: string
+    moreTriggerCharacter?: string[]
+}
+
+interface DocumentLinkOptions {
+    resolveProvider?: boolean
+}
+
+interface ExecuteCommandOptions {
+    commands: string[]
+}
+
+interface SaveOptions {
+    includeText?: boolean
+}
+
+interface TextDocumentSyncOptions {
+    openClose?: boolean
+    change?: number
+    willSave?: boolean
+    willSaveWaitUntil?: boolean
+    save?: SaveOptions
+}
+\end{lstlisting}
 W odpowiedzi na to zapytanie serwer zwraca informacje na temat jego możliwości. W przypadku tej pracy są to:
 
 \begin{itemize}
