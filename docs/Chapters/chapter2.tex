@@ -1,6 +1,11 @@
 \chapter{Implementacja serwera LSP}
 Dysponując parserem kodu Lua, wystarczy odpowiednio przechodzić generowane przez niego drzewa, w celu odpowiedzi na poszczególne zapytania klienta. Punktem wejścia dla projektu będącego częścią niniejszej pracy jest artykuł \cite{lsp_sample} opisujący utworzenie prostego serwera LSP.
 
+\section{Budowa serwera LSP}
+
+\section{Wypis protokołu LSP}
+Protokół LSP, ze względu na szeroką gamę możliwości nowoczesnych edytorów kodu, ma niespełna 40 rodzajów zapytań i komunikatów. Poniżej znajduje się tabela z wypisem metod tegoż interfejsu, a w następnych podrozdziałach nastąpi szczegółowy opis zaimplementowanych w ramach tej pracy rodzajów wiadomości.
+
 \begin{figure}[H]
     \centering
 \begin{tabular}{|c|c|}
@@ -15,11 +20,81 @@ Shutdown & $\hookleftarrow$ \\
 \hline
 Exit & $\rightarrow$ \\
 \hline
+ShowMessage & $\leftarrow$ \\
+\hline
+ShowMessage & $\hookrightarrow$ \\
+\hline
+LogMessage & $\leftarrow$ \\
+\hline
+Telemetry & $\leftarrow$ \\
+\hline
+RegisterCapability & $\hookrightarrow$ \\
+\hline
+UnregisterCapability & $\hookrightarrow$ \\
+\hline
+DidChangeConfiguration & $\rightarrow$ \\
+\hline
+DidChangeWatchedFiles & $\rightarrow$ \\
+\hline
+Symbol & $\hookleftarrow$ \\
+\hline
+ExecuteCommand & $\hookleftarrow$ \\
+\hline
+ApplyEdit & $\hookrightarrow$ \\
+\hline
+DidOpen & $\rightarrow$ \\
+\hline
+DidChange & $\rightarrow$ \\
+\hline
+WillSave & $\rightarrow$ \\
+\hline
+WillSaveWaitUntil & $\hookleftarrow$ \\
+\hline
+DidSave & $\rightarrow$ \\
+\hline
+DidClose & $\rightarrow$ \\
+\hline
+PublishDiagnostics & $\leftarrow$ \\
+\hline
+Completion & $\hookleftarrow$ \\
+\hline
+Completion Resolve & $\hookleftarrow$ \\
+\hline
+Hover & $\hookleftarrow$ \\
+\hline
+SignatureHelp & $\hookleftarrow$ \\
+\hline
+Definition & $\hookleftarrow$ \\
+\hline
+References & $\hookleftarrow$ \\
+\hline
+DocumentHighlight & $\hookleftarrow$ \\
+\hline
+DocumentSymbol & $\hookleftarrow$ \\
+\hline
+CodeAction & $\hookleftarrow$ \\
+\hline
+CodeLens & $\hookleftarrow$ \\
+\hline
+CodeLens Resolve & $\hookleftarrow$ \\
+\hline
+DocumentLink & $\hookleftarrow$ \\
+\hline
+DocumentLink Resolve & $\hookleftarrow$ \\
+\hline
+Formatting & $\hookleftarrow$ \\
+\hline
+RangeFormatting & $\hookleftarrow$ \\
+\hline
+OnTypeFormatting & $\hookleftarrow$ \\
+\hline
+Rename & $\hookleftarrow$ \\
+\hline
 \end{tabular}
 \end{figure}
 
 \section{Zapytanie \texttt{Initialize}}
-\begin{lstlisting}[language=JavaScript, basicstyle=\fontsize{9}{10}\ttfamily]
+\begin{lstlisting}[language=JavaScript, basicstyle=\fontsize{9}{10}\ttfamily, title=Struktura argumentu zapytania]
 interface InitializeParams {
     processId: number | null
     rootPath?: string | null
@@ -89,7 +164,7 @@ interface TextDocumentClientCapabilities {
 }
 \end{lstlisting}
 
-\begin{lstlisting}[language=JavaScript, basicstyle=\fontsize{9}{10}\ttfamily]
+\begin{lstlisting}[language=JavaScript, basicstyle=\fontsize{9}{10}\ttfamily, title=Struktura odpowiedzi]
 interface InitializeResult {
     capabilities: ServerCapabilities
 }
@@ -159,7 +234,7 @@ interface TextDocumentSyncOptions {
     save?: SaveOptions
 }
 \end{lstlisting}
-W odpowiedzi na to zapytanie serwer zwraca informacje na temat jego możliwości. W przypadku tej pracy są to:
+Zapytanie \texttt{Initialize} posiada masywny interfejs zarówno argumentu zapytania klienta, jak i odpowiedzi serwera. Jest tak ze względu na możliwość implementacji dowolnego fragmentu interfejsu LSP. Przy odpowiadaniu na to zapytanie serwer zwraca przygotowany wcześniej obiekt JSON określający jakie funkcjonalności implementuje. W przypadku tej pracy są to:
 
 \begin{itemize}
     \item Znalezienie definicji danej zmiennej lub funkcji.
@@ -169,7 +244,35 @@ W odpowiedzi na to zapytanie serwer zwraca informacje na temat jego możliwości
 
 \section{Komunikaty generujące drzewa}
 \subsection{Komunikat \texttt{DidChangeTextDocument}}
-Komunikat \texttt{DidChangeTextDocument} informuje serwer, że użytkownik dokonał zmian w danym pliku. Uruchomiony zostaje wtedy parser, który czyta treść rzeczonego pliku (możliwością jest pracowanie na samej treści zmiany, jednakże wiązałoby się to z koniecznością napisania własnego parsera wspierającego inkrementalne zmiany w parsowanym tekście). Jeżeli parser napotkał jakiś błąd, jest on zwracany z powrotem do klienta i wyświetlany użytkownikowi pod postacią czerwonego podkreślenia problematycznego fragmentu kodu. Przy udanym parsowaniu otrzymane drzewo jest zapisywane w pamięci, aby można było je odwiedzić przy odpowiadaniu na inne zapytania.
+\begin{lstlisting}[title=Struktura argumentu komunikatu]
+interface DidChangeTextDocumentParams {
+    textDocument: VersionedTextDocumentIdentifier
+    contentChanges: TextDocumentContentChangeEvent[]
+}
+
+interface VersionedTextDocumentIdentifier {
+    uri: string
+    version: number
+}
+
+interface TextDocumentContentChangeEvent {
+    range?: Range
+    rangeLength?: number
+    text: string
+}
+
+interface Range {
+    start: Position
+    end: Position
+}
+
+interface Position {
+    line: number
+    character: number
+}
+\end{lstlisting}
+
+Komunikat \texttt{DidChangeTextDocument} zostaje przesłany do serwera gdy użytkownik zmodyfikował treść pliku (niekoniecznie plik został po tych zmianach zapisany). Należy tutaj nadmienić, że protokół LSP wspiera dwie metody synchronizacji treści pliku między klientem a serwerem, pełną w której każdy komunikat o zmianie pliku zawiera całkowitą treść tego pliku, lub inkrementalny, w którym przesyłane są jedynie pozycje i treść zmienionych fragmentów. Tryb synchronizacji jest określany w odpowiedzi na zapytanie \texttt{Initialize}. Na potrzeby tej pracy zaimplementowano tryb pełny. Po otrzymaniu komunikatu serwer uruchamia parser języka Lua na treści pliku przesłanej w komunikacie. Jeżeli parser napotkał jakiś błąd, jest on zwracany z powrotem do klienta i wyświetlany użytkownikowi pod postacią czerwonego podkreślenia problematycznego fragmentu kodu. Przy udanym parsowaniu otrzymane drzewo jest zapisywane w pamięci, aby można było je odwiedzić przy odpowiadaniu na inne zapytania.
 
 \subsection{Komunikat \texttt{DicChangeConfiguration}}
 Komunikat \texttt{DidChangeConfiguration} informuje nas, że użytkownik zmienił ustawienia edytora, co mogło wpłynąć na pliki w niekontrolowany przez nas sposób. W takim przypadku następuje ponowne parsowanie wszystkich otwartych dokumentów analogicznie do komunikatu \texttt{DidChangeTextDocument}.
