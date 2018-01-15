@@ -92,7 +92,7 @@ function ParseVarName(node) {
         case 'Identifier':
             return node.name;
         case 'IndexExpression':
-            return ParseVarName(node.base) + '.' + ParseVarName(node.index);
+            return ParseVarName(node.base) + '[' + ParseVarName(node.index) + ']';
         case 'MemberExpression':
             return ParseVarName(node.identifier) + '.' + ParseVarName(node.base);
         case 'NumericLiteral':
@@ -125,7 +125,7 @@ function FindIdentifiers(p, node) {
                     let t = astTypeToSymbolType(node.init[i].type);
                     if (t === identifierType.Unknown && node.init[i].name in res)
                         t = res[node.init[i].name].type;
-                    res[id.name] = { node: id, type: t };
+                    res[ParseVarName(node)] = { node: id, type: t };
                 }
             case 'ForGenericStatement':
                 for (let i of node.variables) {
@@ -133,7 +133,7 @@ function FindIdentifiers(p, node) {
                 }
                 break;
             case 'FunctionDeclaration':
-                res[node.identifier.name] = { node: node.identifier, type: identifierType.Function };
+                res[node.identifier.name] = { node: node, type: identifierType.Function };
                 break;
             case 'ForNumericStatement':
                 res[node.variable.name] = { node: node.variable, type: identifierType.Number };
@@ -243,6 +243,15 @@ connection.onDefinition((_params) => {
     }
     return null;
 });
+function LabelifyFunctionNode(node) {
+    let res = node.identifier + '(';
+    let counter = 1;
+    for (let arg of node.arguments) {
+        res = res + '${' + counter.toString() + ':' + ParseVarName(arg) + '}, ';
+        counter++;
+    }
+    return res.substr(0, res.length - 2) + ')';
+}
 // This handler provides the initial list of the completion items.
 connection.onCompletion((textDocumentPosition) => {
     // The pass parameter contains the position of the text document in 
@@ -251,24 +260,24 @@ connection.onCompletion((textDocumentPosition) => {
     let declarations = FindIdentifiers(ToAstPosition(textDocumentPosition.position), fileASTs[textDocumentPosition.textDocument.uri]);
     let res = [];
     for (let ident in declarations) {
-        let kind;
         if (declarations[ident].type === identifierType.Function) {
-            kind = vscode_languageserver_1.CompletionItemKind.Function;
+            res.push({
+                label: LabelifyFunctionNode(declarations[ident].node),
+                kind: vscode_languageserver_1.CompletionItemKind.Function
+            });
         }
         else {
-            kind = vscode_languageserver_1.CompletionItemKind.Variable;
+            res.push({
+                kind: vscode_languageserver_1.CompletionItemKind.Variable,
+                label: ident
+            });
         }
-        res.push({
-            label: ident,
-            kind: kind,
-            data: declarations[ident]
-        });
     }
     stdLib.Variables.forEach((v) => {
         res.push({ label: v, kind: vscode_languageserver_1.CompletionItemKind.Variable });
     });
     stdLib.Functions.forEach((f) => {
-        res.push({ label: f, kind: vscode_languageserver_1.CompletionItemKind.Function });
+        res.push({ label: f, kind: vscode_languageserver_1.CompletionItemKind.Function, insertTextFormat: vscode_languageserver_1.InsertTextFormat.Snippet });
     });
     return res;
 });

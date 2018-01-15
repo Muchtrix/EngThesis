@@ -7,6 +7,7 @@ import {
 	Position,
 	Range,
 	Location,
+	InsertTextFormat,
 } from 'vscode-languageserver';
 import * as stdLib from './stdLib.json';
 import { defaultCipherList } from 'constants';
@@ -129,7 +130,7 @@ function ParseVarName(node:astNode): string{
 		case 'Identifier':
 			return node.name;
 		case 'IndexExpression':
-			return ParseVarName(node.base) + '.' + ParseVarName(node.index);
+			return ParseVarName(node.base) + '[' + ParseVarName(node.index) + ']';
 		case 'MemberExpression':
 			return ParseVarName(node.identifier) + '.' + ParseVarName(node.base);
 		case 'NumericLiteral':
@@ -162,7 +163,7 @@ function FindIdentifiers(p: astPosition, node: astNode): {[id: string]: identifi
 					let id = node.variables[i];
 					let t = astTypeToSymbolType(node.init[i].type);
 					if (t === identifierType.Unknown && node.init[i].name in res) t = res[node.init[i].name].type;
-					res[id.name] = {node: id, type: t};
+					res[ParseVarName(node)] = {node: id, type: t};
 				}
 			case 'ForGenericStatement':
 				for(let i of node.variables){
@@ -170,7 +171,7 @@ function FindIdentifiers(p: astPosition, node: astNode): {[id: string]: identifi
 				}
 				break;
 			case 'FunctionDeclaration':
-				res[node.identifier.name] = {node: node.identifier, type: identifierType.Function};
+				res[node.identifier.name] = {node: node, type: identifierType.Function};
 				break;
 			case 'ForNumericStatement':
 				res[node.variable.name] = {node: node.variable, type: identifierType.Number};
@@ -286,31 +287,46 @@ connection.onDefinition((_params: TextDocumentPositionParams) => {
 	return null;
 });
 
+function LabelifyFunctionNode(node: astNode): string {
+	let res: string = node.identifier + '(';
+	let counter: number = 1;
+	for(let arg of node.arguments){
+		res = res + '${' + counter.toString() + ':' + ParseVarName(arg) + '}, ';
+		if(counter === node.arguments.length){
+			res = res + ')';
+		} else {
+			res = res + ', ';
+		}
+		counter++;
+	}
+	return res.substr(0, res.length - 2);
+}
+
 // This handler provides the initial list of the completion items.
 connection.onCompletion((textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
 	// The pass parameter contains the position of the text document in 
 	// which code complete got requested. For the example we ignore this
-	// info and always provide the same completion items.
+	//ol info and always provide the same completion items.
 	let declarations = FindIdentifiers(ToAstPosition(textDocumentPosition.position), fileASTs[textDocumentPosition.textDocument.uri]);
 	let res : any[] = [];
 	for(let ident in declarations){
-		let kind : CompletionItemKind;
 		if (declarations[ident].type === identifierType.Function){
-			kind = CompletionItemKind.Function;
+			res.push({
+				label: LabelifyFunctionNode(declarations[ident].node),
+				kind: CompletionItemKind.Function
+			});
 		} else {
-			kind = CompletionItemKind.Variable;
+			res.push({
+				kind: CompletionItemKind.Variable,
+				label: ident
+			});
 		}
-		res.push({
-			label: ident,
-			kind: kind,
-			data: declarations[ident]
-		});
 	}
 	(<any>stdLib).Variables.forEach((v : string) => {
 		res.push({label: v, kind: CompletionItemKind.Variable});
 	});
 	(<any>stdLib).Functions.forEach((f : string) => {
-		res.push({label: f, kind: CompletionItemKind.Function});
+		res.push({label: f, kind: CompletionItemKind.Function, insertTextFormat: InsertTextFormat.Snippet});
 	});
 	return res;
 });
