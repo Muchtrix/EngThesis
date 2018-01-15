@@ -272,20 +272,124 @@ interface Position {
 }
 \end{lstlisting}
 
-Komunikat \texttt{DidChangeTextDocument} zostaje przesłany do serwera gdy użytkownik zmodyfikował treść pliku (niekoniecznie plik został po tych zmianach zapisany). Należy tutaj nadmienić, że protokół LSP wspiera dwie metody synchronizacji treści pliku między klientem a serwerem, pełną w której każdy komunikat o zmianie pliku zawiera całkowitą treść tego pliku, lub inkrementalny, w którym przesyłane są jedynie pozycje i treść zmienionych fragmentów. Tryb synchronizacji jest określany w odpowiedzi na zapytanie \texttt{Initialize}. Na potrzeby tej pracy zaimplementowano tryb pełny. Po otrzymaniu komunikatu serwer uruchamia parser języka Lua na treści pliku przesłanej w komunikacie. Jeżeli parser napotkał jakiś błąd, jest on zwracany z powrotem do klienta i wyświetlany użytkownikowi pod postacią czerwonego podkreślenia problematycznego fragmentu kodu. Przy udanym parsowaniu otrzymane drzewo jest zapisywane w pamięci, aby można było je odwiedzić przy odpowiadaniu na inne zapytania.
+Komunikat \texttt{DidChangeTextDocument} zostaje przesłany do serwera gdy użytkownik zmodyfikował treść pliku (niekoniecznie plik został po tych zmianach zapisany). Należy tutaj nadmienić, że protokół LSP wspiera dwie metody synchronizacji treści pliku między klientem a serwerem, pełną w której każdy komunikat o zmianie pliku zawiera całkowitą treść tego pliku, lub inkrementalny, w którym przesyłane są jedynie pozycje i treść zmienionych fragmentów. Tryb synchronizacji jest określany w odpowiedzi na zapytanie \texttt{Initialize}. Na potrzeby tej pracy zaimplementowano tryb pełny. Po otrzymaniu komunikatu serwer uruchamia parser języka Lua na treści pliku przesłanej w komunikacie. Jeżeli parser napotkał jakiś błąd, jest on zwracany z powrotem do klienta i wyświetlany użytkownikowi pod postacią czerwonego podkreślenia problematycznego fragmentu kodu. Przy udanym parsowaniu otrzymane drzewo jest zapisywane słowniku działającym w roli cache'a, aby można było je odwiedzić przy odpowiadaniu na inne zapytania. Jest to opcjonalna optymalizacja, która pozwala uniknąć ponownego parsowania pliku przy niezmienionej treści. Drzewo dla danego pliku jest ważne tak długo jak nie zostanie dostarczony nowy komunikat świadczący o zmianie treści pliku. Treść pliku również jest zapisywana po stronie serwera za pomocą menadżera otwartych plików dostarczanego przez bibliotekę \texttt{vscode-languageserver}.
 
-\subsection{Komunikat \texttt{DicChangeConfiguration}}
-Komunikat \texttt{DidChangeConfiguration} informuje nas, że użytkownik zmienił ustawienia edytora, co mogło wpłynąć na pliki w niekontrolowany przez nas sposób. W takim przypadku następuje ponowne parsowanie wszystkich otwartych dokumentów analogicznie do komunikatu \texttt{DidChangeTextDocument}.
+\subsection{Komunikat \texttt{DidChangeConfiguration}}
+\begin{lstlisting}[title=Struktura argumentu komunikatu]
+interface DidChangeConfigurationParams {
+    settings: any
+}
+\end{lstlisting}
+Komunikat \texttt{DidChangeConfiguration} informuje nas, że użytkownik zmienił ustawienia edytora, co mogło w różny sposób wpłynąć na proces parsowania otwartych plików. W takim przypadku następuje ponowne parsowanie wszystkich dokumentów znajdujących się w cache serwera, każdy z nich traktując analogicznie do komunikatu \texttt{DidChangeTextDocument}.
 
 \section{Zapytania przechodzące po drzewie}
-\subsection{Funkcja \texttt{TraverseTreeDown}}
+\subsection{Wizytator \texttt{TraverseTreeDown}}
 Każde z zapytań które mają w efekcie przejść się po drzewie rozbioru dostarcza nam informacje na temat pozycji w pliku na której się znajduje kursor. W takim razie wydzielona została funkcjonalność tłumaczenia pozycji na węzeł drzewa. Ponieważ każdy z węzłów drzewa rozbioru zawiera informację na temat zakresu tegoż węzła, wystarczy przejść się wgłąb drzewa tak długo jak szukana pozycja znajduje się wewnątrz zakresu przeszukiwanego wierzchołka. Funkcja zwraca odnaleziony wierzchołek.
 
 \subsection{Zapytanie \texttt{Hover}}
-Zapytanie \texttt{Hover} pyta się o możliwe informacje do wyświetlenia gdy użytkownik najedzie kursorem myszy na daną pozycję w pliku. Po znalezieniu najlepiej pasującego wierzchołka za pomocą funkcji \texttt{TraverseTreeDown}, zwracany jest komunikat którego dokładna treść jest określana na podstawie typu wierzchołka (np. dla funkcji będzie to jej nazwa i lista argumentów, a dla zmiennej jej typ).
+\begin{lstlisting}[title=Struktura argumentu zapytania]
+interface TextDocumentPositionParams {
+    textDocument: string
+    position: Position
+}
+\end{lstlisting}
+
+\begin{lstlisting}[title=Struktura odpowiedzi]
+interface Hover {
+    contents: MarkedString | MarkedString[]
+    range?: Range
+}
+\end{lstlisting}
+Zapytanie \texttt{Hover} zostaje wysłane przez edytor, gdy użytkownik zatrzyma na chwilę kursor myszy nad fragmentem tekstu. Edytor ma wtedy możliwość pokazania dodatkowego okienka zawierającego informacje na temat danego miejsca w kodzie. Serwer w odpowiedzi ma zwrócić treść tegoż okienka, która może być oznakowana za pomocą składni Markdown. Po znalezieniu najlepiej pasującego wierzchołka za pomocą funkcji \texttt{TraverseTreeDown}, zwracany jest tekst którego dokładna treść jest określana na podstawie typu wierzchołka (np. dla funkcji będzie to jej nazwa i lista argumentów, a dla zmiennej jej typ).
 
 \subsection{Zapytanie \texttt{GotoDefinition}}
+\begin{lstlisting}[title=Struktura argumentu zapytania]
+interface TextDocumentPositionParams {
+    textDocument: string
+    position: Position
+}
+\end{lstlisting}
+
+\begin{lstlisting}[title=Struktura odpowiedzi]
+type GoToDefinitionReturn = Location | Location[]
+\end{lstlisting}
 Zapytanie \texttt{GotoDefinition} odpowiada akcji polegającej na szukaniu miejsca zdefiniowania danego symbolu w kodzie. Po znalezieniu szukanego symbolu następuje ponowne przejście po drzewie w celu odnalezienia najpóźniejszej definicji tegoż symbolu (w języku Lua symbole mogą być definiowane na nowo w trakcie działania programu, a także przesłaniane za pomocą słowa kluczowego \texttt{local}). Zwracana jest pozycja odnalezionej definicji.
 
 \subsection{Zapytanie \texttt{Completion}}
+
+\begin{lstlisting}[title=Struktura argumentu zapytania]
+interface CompletionParams {
+    textDocument: string
+    position: Position
+    context?: CompletionContext
+}
+
+namespace CompletionTriggerKind {
+    const Invoked: 1 = 1
+    const TriggerCharacter: 2 = 2
+}
+type CompletionTriggerKind = 1 | 2
+
+interface CompletionContext {
+    triggerKind: CompletionTriggerKind
+    triggerCharacter?: string
+}
+\end{lstlisting}
+\begin{lstlisting}[title=Struktura odpowiedzi]
+interface CompletionList {
+    isIncomplete: boolean
+    items: CompletionItem[]
+}
+
+namespace InsertTextFormat {
+    const PlainText = 1
+    const Snippet = 2
+}
+
+type InsertTextFormat = 1 | 2
+
+interface CompletionItem {
+    label: string
+    kind?: number
+    detail?: string
+    documentation?: string | MarkupContent
+    sortText?: string
+    filterText?: string
+    insertText?: string
+    insertTextFormat?: InsertTextFormat
+    textEdit?: TextEdit
+    additionalTextEdits?: TextEdit[]
+    commitCharacters?: string[]
+    command?: Command
+    data?: any
+}
+
+namespace CompletionItemKind {
+    const Text = 1
+    const Method = 2
+    const Function = 3
+    const Constructor = 4
+    const Field = 5
+    const Variable = 6
+    const Class = 7
+    const Interface = 8
+    const Module = 9
+    const Property = 10
+    const Unit = 11
+    const Value = 12
+    const Enum = 13
+    const Keyword = 14
+    const Snippet = 15
+    const Color = 16
+    const File = 17
+    const Reference = 18
+    const Folder = 19
+    const EnumMember = 20
+    const Constant = 21
+    const Struct = 22
+    const Event = 23
+    const Operator = 24
+    const TypeParameter = 25
+}
+\end{lstlisting}
 Zapytanie \texttt{Completion} jest wysyłane przez klienta w celu odpytania serwera na temat możliwego dokończenia aktualnie pisanego tekstu. Również i w tym przypadku dostarczana jest pozycja kursora, jednakże serwer nie szuka aktualnie edytowanego wierzchołka, tylko listę symboli które zostały zdefiniowane i są dostępne w danym kontekście. Lista odnalezionych symboli jest później rozszerzana o funkcje i zmienne zdefiniowane w bibliotece standardowej Lua (informacje na ich temat znajdują się w osobnym pliku JSON, który został utworzony na podstawie dokumentacji języka \cite{lua_lib}).
