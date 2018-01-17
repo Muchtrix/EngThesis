@@ -292,7 +292,7 @@ Komunikat \texttt{DidChangeConfiguration} informuje nas, że użytkownik zmieni�
 
 \section{Zapytania przechodzące po drzewie}
 \subsection{Wizytator \texttt{TraverseTreeDown}}
-Każde z zapytań które mają w efekcie przejść się po drzewie rozbioru dostarcza nam informacje na temat pozycji w pliku na której się znajduje kursor. W takim razie wydzielona została funkcjonalność tłumaczenia pozycji na węzeł drzewa. Ponieważ każdy z węzłów drzewa rozbioru zawiera informację na temat zakresu tegoż węzła, wystarczy przejść się wgłąb drzewa tak długo jak szukana pozycja znajduje się wewnątrz zakresu przeszukiwanego wierzchołka. Funkcja zwraca odnaleziony wierzchołek.
+Każde z zapytań które mają w efekcie przejść się po drzewie rozbioru dostarcza nam informacje na temat pozycji w pliku na której się znajduje kursor. W takim razie wydzielona została funkcjonalność tłumaczenia pozycji na węzeł drzewa. Ponieważ każdy z węzłów drzewa rozbioru zawiera informację na temat zakresu tegoż węzła, wizytator schodzi po drzewie tak długo jak szukana pozycja znajduje się w zakresie przeszukiwanego wierzchołka. Funkcja zwraca wierzchołek na którym zatrzymało się przeszukiwanie.
 
 \subsection{Zapytanie \texttt{Hover}}
 \begin{lstlisting}[title=Struktura argumentu zapytania]
@@ -321,7 +321,7 @@ interface TextDocumentPositionParams {
 \begin{lstlisting}[title=Struktura odpowiedzi]
 type GoToDefinitionReturn = Location | Location[]
 \end{lstlisting}
-Zapytanie \texttt{GotoDefinition} odpowiada akcji polegającej na szukaniu miejsca zdefiniowania danego symbolu w kodzie. Po znalezieniu szukanego symbolu następuje ponowne przejście po drzewie w celu odnalezienia najpóźniejszej definicji tegoż symbolu (w języku Lua symbole mogą być definiowane na nowo w trakcie działania programu, a także przesłaniane za pomocą słowa kluczowego \texttt{local}). Zwracana jest pozycja odnalezionej definicji.
+Zapytanie \texttt{GotoDefinition} odpowiada wywołaniu przez użytkownika akcji \textbf{Go to Definition}, polegającej na szukaniu miejsca zdefiniowania w kodzie symbolu znajdującego się pod kursorem myszy. Po znalezieniu szukanego symbolu następuje ponowne przejście po drzewie w celu odnalezienia najpóźniejszej definicji tegoż symbolu (w języku Lua symbole mogą być definiowane na nowo w trakcie działania programu, a także przesłaniane za pomocą słowa kluczowego \texttt{local}). W odpowiedzi zwracana jest pozycja w tekście odnalezionej definicji. Następnie edytor ustawia kursor na otrzymaną pozycję, odkrywając w ten sposób szukaną definicję dla użytkownika.
 
 \subsection{Zapytanie \texttt{Completion}}
 
@@ -400,4 +400,4 @@ namespace CompletionItemKind {
     const TypeParameter = 25
 }
 \end{lstlisting}
-Zapytanie \texttt{Completion} jest wysyłane przez klienta w celu odpytania serwera na temat możliwego dokończenia aktualnie pisanego tekstu. Również i w tym przypadku dostarczana jest pozycja kursora, jednakże serwer nie szuka aktualnie edytowanego wierzchołka, tylko listę symboli które zostały zdefiniowane i są dostępne w danym kontekście. Lista odnalezionych symboli jest później rozszerzana o funkcje i zmienne zdefiniowane w bibliotece standardowej Lua (informacje na ich temat znajdują się w osobnym pliku JSON, który został utworzony na podstawie dokumentacji języka \cite{lua_lib}).
+Zapytanie \texttt{Completion} jest wysyłane przez klienta w celu odpytania serwera na temat możliwego dokończenia aktualnie pisanego tekstu. Również i w tym przypadku dostarczana jest pozycja kursora, jednakże serwer nie szuka aktualnie edytowanego wierzchołka, tylko listę symboli które zostały zdefiniowane i są dostępne w danym kontekście. Lista odnalezionych symboli jest później rozszerzana o funkcje i zmienne zdefiniowane w bibliotece standardowej Lua (informacje na ich temat znajdują się w osobnym pliku JSON, który został utworzony na podstawie dokumentacji języka \cite{lua_lib}). Obliczona lista zostaje odesłana do klienta, a edytor przed pokazaniem jej użytkownikowi sortuje wpisy pod względem prawdopodobieństwa poprawnego dokończenia wpisywanej frazy.
