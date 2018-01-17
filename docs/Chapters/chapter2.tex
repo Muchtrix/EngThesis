@@ -2,12 +2,20 @@
 Dysponując parserem kodu Lua, wystarczy odpowiednio przechodzić generowane przez niego drzewa, w celu odpowiedzi na poszczególne zapytania klienta. Punktem wejścia dla projektu będącego częścią niniejszej pracy jest artykuł \cite{lsp_sample} opisujący utworzenie prostego serwera LSP.
 
 \section{Budowa serwera LSP}
+\begin{figure}[H]
+\centering
+Struktura serwera LSP
+\includegraphics[scale=0.6]{Chapters/struktura_serwera}
+\end{figure}
+
+Jak widać na diagramie, kod odpowiedzialny za komunikację w ramach protokołu został dostarczony przez twórców odpowiednich bibliotek. W następnych podrozdziałach poruszana będzie implementacja tej części kodu która oblicza odpowiedzi na zapytania protokołu LSP.
 
 \section{Wypis protokołu LSP}
-Protokół LSP, ze względu na szeroką gamę możliwości nowoczesnych edytorów kodu, ma niespełna 40 rodzajów zapytań i komunikatów. Poniżej znajduje się tabela z wypisem metod tegoż interfejsu, a w następnych podrozdziałach nastąpi szczegółowy opis zaimplementowanych w ramach tej pracy rodzajów wiadomości.
+Protokół LSP, ze względu na szeroką gamę możliwości nowoczesnych edytorów kodu, ma niespełna 40 rodzajów zapytań i komunikatów. Poniżej znajduje się tabela z wypisem metod tegoż interfejsu, a w następnych podrozdziałach nastąpi szczegółowy opis zaimplementowanych w ramach tej pracy rodzajów komunikatów.
 
 \begin{figure}[H]
     \centering
+    \small
 \begin{tabular}{|c|c|}
 \hline
 Nazwa metody & Kierunek komunikacji Klient - Serwer\\

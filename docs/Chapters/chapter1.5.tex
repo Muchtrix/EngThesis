@@ -1,5 +1,5 @@
 \chapter{Część kliencka rozszerzenia}
-W przypadku edytora Visual Studio Code, komunikacja między serwerem LSP a edytorem następuje poprzez dodatkowy adapter w postaci osobnego małego rozszerzenia. Dodatkowo, nie wszystkie możliwości edytora są wspierane przez protokół. Część kliencka rozszerzenia zatem ma 2 funkcjonalności:
+W przypadku edytora Visual Studio Code, komunikacja między serwerem LSP a edytorem następuje poprzez dodatkowy adapter w postaci osobnego małego rozszerzenia. Dodatkowo, nie wszystkie możliwości edytora są wspierane przez protokół. Część kliencka rozszerzenia która powstała w ramach niniejszej pracy ma 2 funkcjonalności:
 
 \begin{enumerate}
     \item Uruchomienie serwera i komunikacja z nim.
@@ -7,13 +7,18 @@ W przypadku edytora Visual Studio Code, komunikacja między serwerem LSP a edyto
 \end{enumerate}
 
 \section{Komunikacja z serwerem}
+\begin{figure}[H]
+\centering
+Struktura klienckiej części rozszerzenia
+\includegraphics[scale=0.5]{Chapters/struktura_klienta}
+\end{figure}
 Ponieważ zarówno klient jak i serwer LSP są napisane w środowisku Node.js, możliwe było wykorzystanie bibliotek udostępnionych przez twórców edytora, przez co nawiązanie połączenia i jego obsługa ogranicza się do wskazania pliku serwera. Dodatkowo moduł serwera zostaje przy utworzeniu dodany do listy obiektów usuwanych przy zamknięciu rozszerzenia (np. zamknięte zostały wszystkie pliki Lua lub został wyłączony edytor).
+
 
 \section{Dodatkowe funkcjonalności}
 Klient poza przekazywaniem pracy do serwera, może implementować wiele osobnych funkcjonalności. Są to między innymi rejestracja danego języka programowania w słowniku edytora, co pozwala wielu wtyczkom dotyczących jednego języka na korzystanie ze swoich funkcji nawzajem. Inną ważną funkcjonalnością jest dodanie opisu kolorowania składni. W przypadku VS Code robi się to przez załączenie pliku gramatyki dla edytora TextMate (podejście identyczne jak w przypadku rozszerzeń do edytora Atom). Przykładowo reguła składni:
-\pagebreak
 
-\begin{lstlisting}[language=XML, morekeywords={dict,key,string}]
+\begin{lstlisting}[language=XML, morekeywords={dict,key,string}, basicstyle=\fontsize{9}{10}\ttfamily]
     <dict>
         <key>match</key>
         <string>(?&lt;![\w\d.])\d+(?![pPeE.0-9])</string>
@@ -24,7 +29,7 @@ Klient poza przekazywaniem pracy do serwera, może implementować wiele osobnych
 
 Spowoduje, że fragmentom tekstu pasującym do podanego wyrażenia regularnego (w tym przypadku liczbom całkowitym w systemie dziesiętnym) zostanie przypisana etykieta \texttt{constant.numeric.integer.lua}, która zostanie odpowiednio pokolorowana na podstawie wybranego przez użytkownika motywu kolorystycznego. W przypadku prezentowanego motywu:
 
-\begin{lstlisting}[language=XML, morekeywords={dict,key,string}]
+\begin{lstlisting}[language=XML, morekeywords={dict,key,string}, basicstyle=\fontsize{9}{10}\ttfamily]
     <dict>
         <key>name</key>
         <string>Number</string>
