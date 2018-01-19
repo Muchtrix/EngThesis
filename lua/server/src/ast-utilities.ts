@@ -37,6 +37,9 @@ export interface astNode {
 	value?: number | string
 	label?: string
 	clauses?: astNode[]
+	left?: astNode
+	right?: astNode
+	argument?: astNode
 }
 
 export enum identifierType {Number, String, Function, Table, Null, Unknown}
@@ -105,8 +108,8 @@ export function TraverseTreeDown(p: astPosition, node: astNode): astNode {
 	}
 	switch(node.type){
 		case 'CallStatement':
-			let r = TraverseTreeDown(p, node.expression);
-			if (r != undefined) return r;
+			let expRes = TraverseTreeDown(p, node.expression);
+			if (expRes != undefined) return expRes;
 			break;
 		case 'CallExpression':
 		case 'ReturnStatement':
@@ -131,11 +134,23 @@ export function TraverseTreeDown(p: astPosition, node: astNode): astNode {
 				let r = TraverseTreeDown(p, v);
 				if(r != undefined) return r;
 			}
+			break;
 		case 'IfStatement':
-		for (let c of node.clauses) {
-			let r = TraverseTreeDown(p, c);
-			if (r != undefined) return r;
-		}
+			for (let c of node.clauses) {
+				let r = TraverseTreeDown(p, c);
+				if (r != undefined) return r;
+			}
+			break;
+		case 'BinaryExpression':
+			let leftRes = TraverseTreeDown(p, node.left);
+			if (leftRes != undefined) return leftRes;
+			let rightRes = TraverseTreeDown(p, node.right);
+			if (rightRes != undefined) return rightRes;
+			break;
+		case 'UnaryExpression':
+			let argRes = TraverseTreeDown(p, node.argument);
+			if (argRes != undefined) return argRes;
+			break;
 	}
 	return node;
 }
@@ -202,6 +217,11 @@ export function FindIdentifiers(p: astPosition, node: astNode): {[id: string]: i
 				break;
 			case 'FunctionDeclaration':
 				res[node.identifier.name] = {node: node, type: identifierType.Function};
+				if (inRange(p, node.loc)){
+					for(let arg of node.parameters){
+						res[ParseVarName(arg)] = {node: node, type: identifierType.Unknown}
+					}
+				}
 				break;
 			case 'ForNumericStatement':
 				res[node.variable.name] = {node: node.variable, type: identifierType.Number};
