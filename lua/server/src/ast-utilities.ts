@@ -204,8 +204,13 @@ let printableType: {[type: string]: (node: astNode)=> string} = {
 	'WhileStatement' : (_node) => 'While loop',
 	'DoStatement' : (_node) => 'Do statement',
 	'RepeatStatement' : (_node) => 'Repeat statement',
-	'AssignmentStatement' : (_node) => 'Assignment statement',
-	'FunctionDeclaration' : (node) => 'Function ' + LabelifyFunctionNode(node, false)
+	'LocalStatement' : (node) => 'Local assignment statement, arity: ' + node.variables.length.toString(),
+	'AssignmentStatement' : (node) => 'Assignment statement, arity: ' + node.variables.length.toString(),
+	'CallStatement' : (_node) => 'Function call',
+	'FunctionDeclaration' : (node) => 'Function ' + LabelifyFunctionNode(node, false),
+	'ForNumericStatement' : (node) => 'For loop, variable: ' + node.variable.name,
+	'ForGenericStatement' : (node) => 'Generic for loop, variables: ' + node.variables.map((n) => n.name).join(', '),
+
 }
 
 export function AstNodeToMarkedString(node: astNode) {
@@ -215,18 +220,9 @@ export function AstNodeToMarkedString(node: astNode) {
 }
 
 export function LabelifyFunctionNode(node: astNode, snippet: boolean): string {
-	let res: string = node.identifier.name + '(';
-	let counter: number = 1;
-	for(let arg of node.parameters){
-		if(snippet){
-			res = res + '${' + counter.toString() + ':' + ParseVarName(arg) + '}';
-		} else {
-			res = res + ParseVarName(arg);
-		}
-		if(counter < node.parameters.length){
-			res = res + ', ';
-		}
-		counter++;
+	if (snippet) {
+		return node.identifier.name + '(' + node.parameters.map((n, i) => '${' + (i+1).toString() + ':' + ParseVarName(n) + '}').join(', ') + ')';
+	} else {
+		return node.identifier.name + '(' + node.parameters.map((n) => ParseVarName(n)).join(', ') + ')';
 	}
-	return res + ')';
 }

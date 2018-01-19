@@ -1,4 +1,3 @@
-/// <reference path="./ast-utilities.ts"/>
 'use strict';
 Object.defineProperty(exports, "__esModule", { value: true });
 const vscode_languageserver_1 = require("vscode-languageserver");

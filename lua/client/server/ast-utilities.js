@@ -176,8 +176,12 @@ let printableType = {
     'WhileStatement': (_node) => 'While loop',
     'DoStatement': (_node) => 'Do statement',
     'RepeatStatement': (_node) => 'Repeat statement',
-    'AssignmentStatement': (_node) => 'Assignment statement',
-    'FunctionDeclaration': (node) => 'Function ' + LabelifyFunctionNode(node, false)
+    'LocalStatement': (node) => 'Local assignment statement, arity: ' + node.variables.length.toString(),
+    'AssignmentStatement': (node) => 'Assignment statement, arity: ' + node.variables.length.toString(),
+    'CallStatement': (_node) => 'Function call',
+    'FunctionDeclaration': (node) => 'Function ' + LabelifyFunctionNode(node, false),
+    'ForNumericStatement': (node) => 'For loop, variable: ' + node.variable.name,
+    'ForGenericStatement': (node) => 'Generic for loop, variables: ' + node.variables.map((n) => n.name).join(', '),
 };
 function AstNodeToMarkedString(node) {
     if (node.type === 'chunk')
@@ -187,21 +191,12 @@ function AstNodeToMarkedString(node) {
 }
 exports.AstNodeToMarkedString = AstNodeToMarkedString;
 function LabelifyFunctionNode(node, snippet) {
-    let res = node.identifier.name + '(';
-    let counter = 1;
-    for (let arg of node.parameters) {
-        if (snippet) {
-            res = res + '${' + counter.toString() + ':' + ParseVarName(arg) + '}';
-        }
-        else {
-            res = res + ParseVarName(arg);
-        }
-        if (counter < node.parameters.length) {
-            res = res + ', ';
-        }
-        counter++;
+    if (snippet) {
+        return node.identifier.name + '(' + node.parameters.map((n, i) => '${' + (i + 1).toString() + ':' + ParseVarName(n) + '}').join(', ') + ')';
     }
-    return res + ')';
+    else {
+        return node.identifier.name + '(' + node.parameters.map((n) => ParseVarName(n)).join(', ') + ')';
+    }
 }
 exports.LabelifyFunctionNode = LabelifyFunctionNode;
 //# sourceMappingURL=ast-utilities.js.map
