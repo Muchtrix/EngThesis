@@ -15,7 +15,7 @@ connection.onInitialize((_params) => {
         capabilities: {
             textDocumentSync: documents.syncKind,
             completionProvider: {
-                resolveProvider: true
+                resolveProvider: false
             },
             hoverProvider: true,
             definitionProvider: true
@@ -110,7 +110,7 @@ connection.onCompletion((textDocumentPosition) => {
         res.push({ label: v, kind: vscode_languageserver_1.CompletionItemKind.Variable });
     });
     stdLib.Functions.forEach((f) => {
-        res.push({ label: f, insertText: f, kind: vscode_languageserver_1.CompletionItemKind.Function, insertTextFormat: vscode_languageserver_1.InsertTextFormat.Snippet });
+        res.push({ label: f.label, insertText: f.snippet, kind: vscode_languageserver_1.CompletionItemKind.Function, insertTextFormat: vscode_languageserver_1.InsertTextFormat.Snippet });
     });
     return res;
 });

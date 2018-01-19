@@ -23,7 +23,7 @@ connection.onInitialize((_params): InitializeResult => {
 		capabilities: {
 			textDocumentSync: documents.syncKind,
 			completionProvider: {
-				resolveProvider: true
+				resolveProvider: false
 			},
 			hoverProvider: true,
 			definitionProvider: true
@@ -116,8 +116,8 @@ connection.onCompletion((textDocumentPosition: TextDocumentPositionParams): Comp
 	(<any>stdLib).Variables.forEach((v : string) => {
 		res.push({label: v, kind: CompletionItemKind.Variable});
 	});
-	(<any>stdLib).Functions.forEach((f : string) => {
-		res.push({label: f, insertText: f, kind: CompletionItemKind.Function, insertTextFormat: InsertTextFormat.Snippet});
+	(<any>stdLib).Functions.forEach((f : {label: string, snippet: string}) => {
+		res.push({label: f.label, insertText: f.snippet, kind: CompletionItemKind.Function, insertTextFormat: InsertTextFormat.Snippet});
 	});
 	return res;
 });
