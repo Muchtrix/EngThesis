@@ -76,7 +76,7 @@ connection.onHover((params: TextDocumentPositionParams) => {
 	let resNode = astUtils.TraverseTreeDown(astUtils.ToAstPosition(params.position), tree);
 	if (resNode !== undefined) {
 		let markedString = astUtils.AstNodeToMarkedString(resNode);
-		if (markedString !== undefined) return {contents: markedString};
+		if (markedString !== undefined) return {contents: markedString, range: astUtils.ToFileRange(resNode)};
 	}
 	return null;
 });

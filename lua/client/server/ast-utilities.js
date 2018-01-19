@@ -84,6 +84,12 @@ function TraverseTreeDown(p, node) {
                 if (r != undefined)
                     return r;
             }
+        case 'IfStatement':
+            for (let c of node.clauses) {
+                let r = TraverseTreeDown(p, c);
+                if (r != undefined)
+                    return r;
+            }
     }
     return node;
 }
@@ -147,31 +153,37 @@ function FindIdentifiers(p, node) {
                     res = FindIdentifiers(p, g, res);
             }
         }
+        if (inRange(p, node.loc) && node.clauses !== undefined) {
+            for (let g of node.clauses) {
+                if (positionLeq(g.loc.start, p))
+                    res = FindIdentifiers(p, g, res);
+            }
+        }
         return res;
     }
     return FindIdentifiers(p, node, {});
 }
 exports.FindIdentifiers = FindIdentifiers;
 let printableType = {
-    'LabelStatement': 'label',
-    'BreakStatement': 'break',
-    'GotoStatement': 'goto',
-    'ReturnStatement': 'return',
-    'IfStatement': 'if',
-    'IfClause': 'if clause',
-    'ElseifClause': 'elseif clause',
-    'ElseClause': 'else clause',
-    'WhileStatement': 'while loop',
-    'DoStatement': 'do',
-    'RepeatStatement': 'repeat',
-    'AssignmentStatement': 'assignment',
-    'FunctionDeclaration': 'function'
+    'LabelStatement': (node) => 'Goto label: ' + node.label,
+    'BreakStatement': (_node) => 'Break statement',
+    'GotoStatement': (node) => 'Goto statement, label: ' + node.label,
+    'ReturnStatement': (node) => 'Return statement, arity: ' + node.arguments.length.toString(),
+    'IfStatement': (_node) => 'If statement',
+    'IfClause': (_node) => 'If clause',
+    'ElseifClause': (_node) => 'Elseif clause',
+    'ElseClause': (_node) => 'Else clause',
+    'WhileStatement': (_node) => 'While loop',
+    'DoStatement': (_node) => 'Do statement',
+    'RepeatStatement': (_node) => 'Repeat statement',
+    'AssignmentStatement': (_node) => 'Assignment statement',
+    'FunctionDeclaration': (node) => 'Function ' + LabelifyFunctionNode(node, false)
 };
 function AstNodeToMarkedString(node) {
     if (node.type === 'chunk')
         return undefined;
-    let type = printableType[node.type] || node.type;
-    return ['### ' + type, '', '---'].join('\n');
+    let type = printableType[node.type](node) || node.type;
+    return type;
 }
 exports.AstNodeToMarkedString = AstNodeToMarkedString;
 function LabelifyFunctionNode(node, snippet) {

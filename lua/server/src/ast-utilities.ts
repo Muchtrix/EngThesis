@@ -32,6 +32,8 @@ export interface astNode {
 	variable?: astNode
 	index?: astNode
 	value?: number | string
+	label?: string
+	clauses?: astNode[]
 }
 
 export enum identifierType {Number, String, Function, Table, Null, Unknown}
@@ -109,6 +111,11 @@ export function TraverseTreeDown(p: astPosition, node: astNode): astNode {
 				let r = TraverseTreeDown(p, v);
 				if(r != undefined) return r;
 			}
+		case 'IfStatement':
+		for (let c of node.clauses) {
+			let r = TraverseTreeDown(p, c);
+			if (r != undefined) return r;
+		}
 	}
 	return node;
 }
@@ -172,32 +179,39 @@ export function FindIdentifiers(p: astPosition, node: astNode): {[id: string]: i
 					res = FindIdentifiers(p, g, res);
 			}
 		}
+
+		if (inRange(p, node.loc) && node.clauses !== undefined){
+			for(let g of node.clauses){
+				if (positionLeq(g.loc.start, p))
+					res = FindIdentifiers(p, g, res);
+			}
+		}
 	
 		return res;
 	}
 	return FindIdentifiers(p, node, {});
 }
 
-let printableType: {[type: string]: string} = {
-	'LabelStatement' : 'label',
-	'BreakStatement' : 'break',
-	'GotoStatement' : 'goto',
-	'ReturnStatement' : 'return',
-	'IfStatement' : 'if',
-	'IfClause' : 'if clause',
-	'ElseifClause' : 'elseif clause',
-	'ElseClause' : 'else clause',
-	'WhileStatement' : 'while loop',
-	'DoStatement' : 'do',
-	'RepeatStatement' : 'repeat',
-	'AssignmentStatement' : 'assignment',
-	'FunctionDeclaration' : 'function'
+let printableType: {[type: string]: (node: astNode)=> string} = {
+	'LabelStatement' : (node) => 'Goto label: ' + node.label,
+	'BreakStatement' : (_node) => 'Break statement',
+	'GotoStatement' : (node) => 'Goto statement, label: ' + node.label,
+	'ReturnStatement' : (node) => 'Return statement, arity: ' + node.arguments.length.toString(),
+	'IfStatement' : (_node) => 'If statement',
+	'IfClause' : (_node) => 'If clause',
+	'ElseifClause' : (_node) => 'Elseif clause',
+	'ElseClause' : (_node) => 'Else clause',
+	'WhileStatement' : (_node) => 'While loop',
+	'DoStatement' : (_node) => 'Do statement',
+	'RepeatStatement' : (_node) => 'Repeat statement',
+	'AssignmentStatement' : (_node) => 'Assignment statement',
+	'FunctionDeclaration' : (node) => 'Function ' + LabelifyFunctionNode(node, false)
 }
 
 export function AstNodeToMarkedString(node: astNode) {
 	if (node.type === 'chunk') return undefined;
-	let type:string = printableType[node.type] || node.type;
-	return ['### '+type, '', '---'].join('\n');
+	let type:string = printableType[node.type](node) || node.type;
+	return type;
 }
 
 export function LabelifyFunctionNode(node: astNode, snippet: boolean): string {

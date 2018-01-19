@@ -67,7 +67,7 @@ connection.onHover((params) => {
     if (resNode !== undefined) {
         let markedString = astUtils.AstNodeToMarkedString(resNode);
         if (markedString !== undefined)
-            return { contents: markedString };
+            return { contents: markedString, range: astUtils.ToFileRange(resNode) };
     }
     return null;
 });
