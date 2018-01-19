@@ -4,6 +4,9 @@ import {
 	Location,
 } from 'vscode-languageserver';
 
+//-----------------------------------------------------------------------------
+// Deklaracje interfejsów
+//-----------------------------------------------------------------------------
 export interface astPosition {
 	line: number,
 	column: number
@@ -43,6 +46,9 @@ export interface identifierInfo {
 	type: identifierType
 }
 
+//-----------------------------------------------------------------------------
+// Funkcje konwertujące między interfejsem luaparse, a vscode-languageserver
+//-----------------------------------------------------------------------------
 export function ToAstPosition(pos: Position) {
 	return {line : pos.line + 1, column : pos.character}
 }
@@ -67,14 +73,28 @@ export function ToFileLocation(node: astNode, fileUri: string): Location{
 	}
 }
 
+//-----------------------------------------------------------------------------
+// Definicja porządku na pozycjach
+//-----------------------------------------------------------------------------
 export function positionLeq (left: astPosition, right: astPosition): boolean {
 	return (left.line < right.line) || ((left.line === right.line) && (left.column <= right.column));
 }
 
+//-----------------------------------------------------------------------------
+// Sprawdzanie czy dana pozycja znajduje się w zadanym przedziale
+//-----------------------------------------------------------------------------
 export function inRange (elem: astPosition, range: astRange): boolean {
 	return positionLeq(range.start, elem) && positionLeq(elem, range.end);
 }
 
+//-----------------------------------------------------------------------------
+// Wizytator TraverseTreeDown
+// Dokonuje konwersji pozycja w tekście -> wierzchołek drzewa rozbioru
+//-----------------------------------------------------------------------------
+// Argumenty:
+// p: szukana pozycja w tekście
+// node: drzewo do przeszukania
+//-----------------------------------------------------------------------------
 export function TraverseTreeDown(p: astPosition, node: astNode): astNode {
 	if (!inRange(p, node.loc)) return undefined;
 	if (node.body !== undefined) {
@@ -120,7 +140,14 @@ export function TraverseTreeDown(p: astPosition, node: astNode): astNode {
 	return node;
 }
 
-export function ParseVarName(node:astNode): string{
+//-----------------------------------------------------------------------------
+// Funkcja przekładająca drzewo reprezentujące zmienną 
+// na napis ją reprezentujący
+//-----------------------------------------------------------------------------
+// Argumenty:
+// node: drzewo do przetłumaczenia
+//-----------------------------------------------------------------------------
+function ParseVarName(node:astNode): string{
 	switch (node.type){
 		case 'Identifier':
 			return node.name;
@@ -135,6 +162,14 @@ export function ParseVarName(node:astNode): string{
 	return null;
 }
 
+//-----------------------------------------------------------------------------
+// Wizytator przeszukjujący drzewo w poszukiwaniu zmiennych i funkcji
+// dostępnych z zadanej w tekście pozycji
+//-----------------------------------------------------------------------------
+// Argumenty:
+// p: pozycja dla której szukamy kontekstu
+// node: drzewo do przeszukania
+//-----------------------------------------------------------------------------
 export function FindIdentifiers(p: astPosition, node: astNode): {[id: string]: identifierInfo}{
 	function astTypeToSymbolType(type: string) : identifierType {
 		switch(type){
@@ -192,7 +227,21 @@ export function FindIdentifiers(p: astPosition, node: astNode): {[id: string]: i
 	return FindIdentifiers(p, node, {});
 }
 
-let printableType: {[type: string]: (node: astNode)=> string} = {
+//-----------------------------------------------------------------------------
+// Funkcja służąca do obsługi zapytania Hover, obliczająca treść wyskakującego okienka
+//-----------------------------------------------------------------------------
+// Argumenty:
+// node: wierzchołek do opisania
+//-----------------------------------------------------------------------------
+export function AstNodeToMarkedString(node: astNode) {
+	if (HoverTextDictionary[node.type] === undefined){
+		return node.type;
+	} else {
+		return HoverTextDictionary[node.type](node);
+	}
+}
+
+let HoverTextDictionary: {[type: string]: (node: astNode)=> string} = {
 	'LabelStatement' : (node) => 'Goto label: ' + node.label,
 	'BreakStatement' : (_node) => 'Break statement',
 	'GotoStatement' : (node) => 'Goto statement, label: ' + node.label,
@@ -210,15 +259,19 @@ let printableType: {[type: string]: (node: astNode)=> string} = {
 	'FunctionDeclaration' : (node) => 'Function ' + LabelifyFunctionNode(node, false),
 	'ForNumericStatement' : (node) => 'For loop, variable: ' + node.variable.name,
 	'ForGenericStatement' : (node) => 'Generic for loop, variables: ' + node.variables.map((n) => n.name).join(', '),
-
+	'Chunk' : (_node) => undefined,
+	'Identifier' : (node) => 'Variable ' + ParseVarName(node)
 }
-
-export function AstNodeToMarkedString(node: astNode) {
-	if (node.type === 'chunk') return undefined;
-	let type:string = printableType[node.type](node) || node.type;
-	return type;
-}
-
+//-----------------------------------------------------------------------------
+// Funkcja przekładająca drzewo reprezentujące deklarację funkcji
+// na napis ją reprezentujący
+//-----------------------------------------------------------------------------
+// Argumenty:
+// node: drzewo do przetłumaczenia
+// snippet: Jeśli nastawiony na true, argumenty będą zapisane w notacji
+//	 pozwalającej na przeskok między nimi za pomocą klawisza tab
+// ref: https://code.visualstudio.com/docs/editor/userdefinedsnippets#_snippet-syntax
+//-----------------------------------------------------------------------------
 export function LabelifyFunctionNode(node: astNode, snippet: boolean): string {
 	if (snippet) {
 		return node.identifier.name + '(' + node.parameters.map((n, i) => '${' + (i+1).toString() + ':' + ParseVarName(n) + '}').join(', ') + ')';

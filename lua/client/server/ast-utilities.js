@@ -9,6 +9,9 @@ var identifierType;
     identifierType[identifierType["Null"] = 4] = "Null";
     identifierType[identifierType["Unknown"] = 5] = "Unknown";
 })(identifierType = exports.identifierType || (exports.identifierType = {}));
+//-----------------------------------------------------------------------------
+// Funkcje konwertujące między interfejsem luaparse, a vscode-languageserver
+//-----------------------------------------------------------------------------
 function ToAstPosition(pos) {
     return { line: pos.line + 1, column: pos.character };
 }
@@ -33,14 +36,28 @@ function ToFileLocation(node, fileUri) {
     };
 }
 exports.ToFileLocation = ToFileLocation;
+//-----------------------------------------------------------------------------
+// Definicja porządku na pozycjach
+//-----------------------------------------------------------------------------
 function positionLeq(left, right) {
     return (left.line < right.line) || ((left.line === right.line) && (left.column <= right.column));
 }
 exports.positionLeq = positionLeq;
+//-----------------------------------------------------------------------------
+// Sprawdzanie czy dana pozycja znajduje się w zadanym przedziale
+//-----------------------------------------------------------------------------
 function inRange(elem, range) {
     return positionLeq(range.start, elem) && positionLeq(elem, range.end);
 }
 exports.inRange = inRange;
+//-----------------------------------------------------------------------------
+// Wizytator TraverseTreeDown
+// Dokonuje konwersji pozycja w tekście -> wierzchołek drzewa rozbioru
+//-----------------------------------------------------------------------------
+// Argumenty:
+// p: szukana pozycja w tekście
+// node: drzewo do przeszukania
+//-----------------------------------------------------------------------------
 function TraverseTreeDown(p, node) {
     if (!inRange(p, node.loc))
         return undefined;
@@ -94,6 +111,13 @@ function TraverseTreeDown(p, node) {
     return node;
 }
 exports.TraverseTreeDown = TraverseTreeDown;
+//-----------------------------------------------------------------------------
+// Funkcja przekładająca drzewo reprezentujące zmienną 
+// na napis ją reprezentujący
+//-----------------------------------------------------------------------------
+// Argumenty:
+// node: drzewo do przetłumaczenia
+//-----------------------------------------------------------------------------
 function ParseVarName(node) {
     switch (node.type) {
         case 'Identifier':
@@ -108,7 +132,14 @@ function ParseVarName(node) {
     }
     return null;
 }
-exports.ParseVarName = ParseVarName;
+//-----------------------------------------------------------------------------
+// Wizytator przeszukjujący drzewo w poszukiwaniu zmiennych i funkcji
+// dostępnych z zadanej w tekście pozycji
+//-----------------------------------------------------------------------------
+// Argumenty:
+// p: pozycja dla której szukamy kontekstu
+// node: drzewo do przeszukania
+//-----------------------------------------------------------------------------
 function FindIdentifiers(p, node) {
     function astTypeToSymbolType(type) {
         switch (type) {
@@ -164,7 +195,22 @@ function FindIdentifiers(p, node) {
     return FindIdentifiers(p, node, {});
 }
 exports.FindIdentifiers = FindIdentifiers;
-let printableType = {
+//-----------------------------------------------------------------------------
+// Funkcja służąca do obsługi zapytania Hover, obliczająca treść wyskakującego okienka
+//-----------------------------------------------------------------------------
+// Argumenty:
+// node: wierzchołek do opisania
+//-----------------------------------------------------------------------------
+function AstNodeToMarkedString(node) {
+    if (HoverTextDictionary[node.type] === undefined) {
+        return node.type;
+    }
+    else {
+        return HoverTextDictionary[node.type](node);
+    }
+}
+exports.AstNodeToMarkedString = AstNodeToMarkedString;
+let HoverTextDictionary = {
     'LabelStatement': (node) => 'Goto label: ' + node.label,
     'BreakStatement': (_node) => 'Break statement',
     'GotoStatement': (node) => 'Goto statement, label: ' + node.label,
@@ -182,14 +228,19 @@ let printableType = {
     'FunctionDeclaration': (node) => 'Function ' + LabelifyFunctionNode(node, false),
     'ForNumericStatement': (node) => 'For loop, variable: ' + node.variable.name,
     'ForGenericStatement': (node) => 'Generic for loop, variables: ' + node.variables.map((n) => n.name).join(', '),
+    'Chunk': (_node) => undefined,
+    'Identifier': (node) => 'Variable ' + ParseVarName(node)
 };
-function AstNodeToMarkedString(node) {
-    if (node.type === 'chunk')
-        return undefined;
-    let type = printableType[node.type](node) || node.type;
-    return type;
-}
-exports.AstNodeToMarkedString = AstNodeToMarkedString;
+//-----------------------------------------------------------------------------
+// Funkcja przekładająca drzewo reprezentujące deklarację funkcji
+// na napis ją reprezentujący
+//-----------------------------------------------------------------------------
+// Argumenty:
+// node: drzewo do przetłumaczenia
+// snippet: Jeśli nastawiony na true, argumenty będą zapisane w notacji
+//	 pozwalającej na przeskok między nimi za pomocą klawisza tab
+// ref: https://code.visualstudio.com/docs/editor/userdefinedsnippets#_snippet-syntax
+//-----------------------------------------------------------------------------
 function LabelifyFunctionNode(node, snippet) {
     if (snippet) {
         return node.identifier.name + '(' + node.parameters.map((n, i) => '${' + (i + 1).toString() + ':' + ParseVarName(n) + '}').join(', ') + ')';
