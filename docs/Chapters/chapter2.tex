@@ -400,3 +400,9 @@ namespace CompletionItemKind {
 }
 \end{lstlisting}
 Zapytanie \texttt{Completion} jest wysyłane przez klienta w celu odpytania serwera na temat możliwego dokończenia aktualnie pisanego tekstu. Również i w tym przypadku dostarczana jest pozycja kursora, jednakże serwer nie szuka aktualnie edytowanego wierzchołka, tylko listę symboli które zostały zdefiniowane i są dostępne w danym kontekście. Lista odnalezionych symboli jest później rozszerzana o funkcje i zmienne zdefiniowane w bibliotece standardowej Lua (informacje na ich temat znajdują się w osobnym pliku JSON, który został utworzony na podstawie dokumentacji języka \cite{lua_lib}). Obliczona lista zostaje odesłana do klienta, a edytor przed pokazaniem jej użytkownikowi sortuje wpisy pod względem prawdopodobieństwa poprawnego dokończenia wpisywanej frazy.
+
+\begin{figure}[H]
+\centering
+Przykład autouzupełniania\\
+\includegraphics[scale=0.7]{Chapters/uzupelnianie}
+\end{figure}
