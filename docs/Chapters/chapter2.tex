@@ -4,99 +4,98 @@ Dysponując parserem kodu Lua, wystarczy odpowiednio przechodzić generowane prz
 \section{Budowa serwera LSP}
 \begin{figure}[H]
 \centering
-Struktura serwera LSP
-\includegraphics[scale=0.6]{Chapters/struktura_serwera}
+Struktura serwera LSP\\
+\includegraphics[scale=0.5]{Chapters/struktura_serwera}
 \end{figure}
 
 Jak widać na diagramie, kod odpowiedzialny za komunikację w ramach protokołu został dostarczony przez twórców odpowiednich bibliotek. W następnych podrozdziałach poruszana będzie implementacja tej części kodu która oblicza odpowiedzi na zapytania protokołu LSP.
 
-\section{Wypis protokołu LSP}
-Protokół LSP, ze względu na szeroką gamę możliwości nowoczesnych edytorów kodu, ma niespełna 40 rodzajów zapytań i komunikatów. Poniżej znajduje się tabela z wypisem metod tegoż interfejsu, a w następnych podrozdziałach nastąpi szczegółowy opis zaimplementowanych w ramach tej pracy rodzajów komunikatów.
-
+\section{Opis protokołu LSP}
+Protokół LSP, ze względu na szeroką gamę możliwości nowoczesnych edytorów kodu, ma niespełna 40 rodzajów zapytań i komunikatów. Poniżej znajduje się tabela z wypisanymi metodami tegoż interfejsu, a w następnych podrozdziałach nastąpi szczegółowy opis zaimplementowanych w ramach tej pracy rodzajów komunikatów. Metody oznaczone statusem “Nie będzie implementowana'' są niepotrzebne do podstawowej pracy z edytorem, natomiast status “Planowana'' oznacza, że metodę warto obsłużyć i będzie to kierunek dalszych prac.
 \begin{figure}[H]
     \centering
-    \small
-\begin{tabular}{|c|c|}
+    \footnotesize
+\begin{tabular}{|c|c|c|}
 \hline
-Nazwa metody & Kierunek komunikacji Klient - Serwer\\
+Nazwa metody & Kierunek komunikacji Klient - Serwer & Status implementacji \\
 \hline
-Initialize & $\righttoleftarrow$ \\   
+Initialize & $\righttoleftarrow$ & Zaimplementowana \\   
 \hline
-Initialized & $\rightarrow$ \\
+Initialized & $\rightarrow$ & Nie będzie implementowana \\
 \hline
-Shutdown & $\righttoleftarrow$ \\   
+Shutdown & $\righttoleftarrow$ & Nie będzie implementowana\\   
 \hline
-Exit & $\rightarrow$ \\
+Exit & $\rightarrow$ & Nie będzie implementowana\\
 \hline
-ShowMessage & $\leftarrow$ \\
+ShowMessage & $\leftarrow$ & Nie będzie implementowana\\
 \hline
-ShowMessage & $\lefttorightarrow$ \\
+ShowMessage & $\lefttorightarrow$ & Nie będzie implementowana\\
 \hline
-LogMessage & $\leftarrow$ \\
+LogMessage & $\leftarrow$ & Nie będzie implementowana\\
 \hline
-Telemetry & $\leftarrow$ \\
+Telemetry & $\leftarrow$ & Nie będzie implementowana\\
 \hline
-RegisterCapability & $\lefttorightarrow$ \\
+RegisterCapability & $\lefttorightarrow$ & Nie będzie implementowana\\
 \hline
-UnregisterCapability & $\lefttorightarrow$ \\
+UnregisterCapability & $\lefttorightarrow$ & Nie będzie implementowana\\
 \hline
-DidChangeConfiguration & $\rightarrow$ \\
+DidChangeConfiguration & $\rightarrow$ &Zaimplementowana\\
 \hline
-DidChangeWatchedFiles & $\rightarrow$ \\
+DidChangeWatchedFiles & $\rightarrow$ &Planowana\\
 \hline
-Symbol & $\righttoleftarrow$ \\
+Symbol & $\righttoleftarrow$ &Nie będzie implementowana\\
 \hline
-ExecuteCommand & $\righttoleftarrow$ \\
+ExecuteCommand & $\righttoleftarrow$ & Nie będzie implementowana\\
 \hline
-ApplyEdit & $\lefttorightarrow$ \\
+ApplyEdit & $\lefttorightarrow$ & Nie będzie implementowana\\
 \hline
-DidOpen & $\rightarrow$ \\
+DidOpen & $\rightarrow$ &Planowana\\
 \hline
-DidChange & $\rightarrow$ \\
+DidChange & $\rightarrow$ &Zaimplementowana\\
 \hline
-WillSave & $\rightarrow$ \\
+WillSave & $\rightarrow$ & Nie będzie implementowana\\
 \hline
-WillSaveWaitUntil & $\righttoleftarrow$ \\
+WillSaveWaitUntil & $\righttoleftarrow$ & Nie będzie implementowana\\
 \hline
-DidSave & $\rightarrow$ \\
+DidSave & $\rightarrow$ & Nie będzie implementowana\\
 \hline
-DidClose & $\rightarrow$ \\
+DidClose & $\rightarrow$ & Nie będzie implementowana\\
 \hline
-PublishDiagnostics & $\leftarrow$ \\
+PublishDiagnostics & $\leftarrow$ & Obsłużona w ramach DidChange\\
 \hline
-Completion & $\righttoleftarrow$ \\
+Completion & $\righttoleftarrow$ & Zaimplementowana\\
 \hline
-Completion Resolve & $\righttoleftarrow$ \\
+Completion Resolve & $\righttoleftarrow$ & Nie będzie implementowana\\
 \hline
-Hover & $\righttoleftarrow$ \\
+Hover & $\righttoleftarrow$ & Zaimplementowana\\
 \hline
-SignatureHelp & $\righttoleftarrow$ \\
+SignatureHelp & $\righttoleftarrow$ & Nie będzie implementowana\\
 \hline
-Definition & $\righttoleftarrow$ \\
+Definition & $\righttoleftarrow$ & Zaimplementowana\\
 \hline
-References & $\righttoleftarrow$ \\
+References & $\righttoleftarrow$ & Nie będzie implementowana\\
 \hline
-DocumentHighlight & $\righttoleftarrow$ \\
+DocumentHighlight & $\righttoleftarrow$ & Nie będzie implementowana\\
 \hline
-DocumentSymbol & $\righttoleftarrow$ \\
+DocumentSymbol & $\righttoleftarrow$ & Nie będzie implementowana\\
 \hline
-CodeAction & $\righttoleftarrow$ \\
+CodeAction & $\righttoleftarrow$ & Nie będzie implementowana\\
 \hline
-CodeLens & $\righttoleftarrow$ \\
+CodeLens & $\righttoleftarrow$ &Planowana\\
 \hline
-CodeLens Resolve & $\righttoleftarrow$ \\
+CodeLens Resolve & $\righttoleftarrow$ &Planowana\\
 \hline
-DocumentLink & $\righttoleftarrow$ \\
+DocumentLink & $\righttoleftarrow$ &Nie będzie implementowana\\
 \hline
-DocumentLink Resolve & $\righttoleftarrow$ \\
+DocumentLink Resolve & $\righttoleftarrow$ & Nie będzie implementowana\\
 \hline
-Formatting & $\righttoleftarrow$ \\
+Formatting & $\righttoleftarrow$ & Nie będzie implementowana\\
 \hline
-RangeFormatting & $\righttoleftarrow$ \\
+RangeFormatting & $\righttoleftarrow$ & Nie będzie implementowana\\
 \hline
-OnTypeFormatting & $\righttoleftarrow$ \\
+OnTypeFormatting & $\righttoleftarrow$ & Nie będzie implementowana \\
 \hline
-Rename & $\righttoleftarrow$ \\
+Rename & $\righttoleftarrow$ &Planowana\\
 \hline
 \end{tabular}
 \end{figure}
@@ -280,7 +279,7 @@ interface Position {
 }
 \end{lstlisting}
 
-Komunikat \texttt{DidChangeTextDocument} zostaje przesłany do serwera gdy użytkownik zmodyfikował treść pliku (niekoniecznie plik został po tych zmianach zapisany). Należy tutaj nadmienić, że protokół LSP wspiera dwie metody synchronizacji treści pliku między klientem a serwerem, pełną w której każdy komunikat o zmianie pliku zawiera całkowitą treść tego pliku, lub inkrementalny, w którym przesyłane są jedynie pozycje i treść zmienionych fragmentów. Tryb synchronizacji jest określany w odpowiedzi na zapytanie \texttt{Initialize}. Na potrzeby tej pracy zaimplementowano tryb pełny. Po otrzymaniu komunikatu serwer uruchamia parser języka Lua na treści pliku przesłanej w komunikacie. Jeżeli parser napotkał jakiś błąd, jest on zwracany z powrotem do klienta i wyświetlany użytkownikowi pod postacią czerwonego podkreślenia problematycznego fragmentu kodu. Przy udanym parsowaniu otrzymane drzewo jest zapisywane słowniku działającym w roli cache'a, aby można było je odwiedzić przy odpowiadaniu na inne zapytania. Jest to opcjonalna optymalizacja, która pozwala uniknąć ponownego parsowania pliku przy niezmienionej treści. Drzewo dla danego pliku jest ważne tak długo jak nie zostanie dostarczony nowy komunikat świadczący o zmianie treści pliku. Treść pliku również jest zapisywana po stronie serwera za pomocą menadżera otwartych plików dostarczanego przez bibliotekę \texttt{vscode-languageserver}.
+Komunikat \texttt{DidChangeTextDocument} zostaje przesłany do serwera gdy użytkownik zmodyfikował treść pliku (niekoniecznie plik został po tych zmianach zapisany). Należy tutaj nadmienić, że protokół LSP wspiera dwie metody synchronizacji treści pliku między klientem a serwerem, pełną w której każdy komunikat o zmianie pliku zawiera całkowitą treść tego pliku, lub inkrementalny, w którym przesyłane są jedynie pozycje i treść zmienionych fragmentów. Tryb synchronizacji jest określany w odpowiedzi na zapytanie \texttt{Initialize}. Na potrzeby tej pracy zaimplementowano tryb pełny. Po otrzymaniu komunikatu serwer uruchamia parser języka Lua na treści pliku przesłanej w komunikacie. Jeżeli parser napotkał jakiś błąd, jest on zwracany z powrotem do klienta w komunikacie \texttt{PublishDiagnostics} i wyświetlany użytkownikowi pod postacią czerwonego podkreślenia problematycznego fragmentu kodu. Przy udanym parsowaniu otrzymane drzewo jest zapisywane słowniku działającym w roli cache'a, aby można było je odwiedzić przy odpowiadaniu na inne zapytania. Jest to opcjonalna optymalizacja, która pozwala uniknąć ponownego parsowania pliku przy niezmienionej treści. Drzewo dla danego pliku jest ważne tak długo jak nie zostanie dostarczony nowy komunikat świadczący o zmianie treści pliku. Treść pliku również jest zapisywana po stronie serwera za pomocą menadżera otwartych plików dostarczanego przez bibliotekę \texttt{vscode-languageserver}.
 
 \subsection{Komunikat \texttt{DidChangeConfiguration}}
 \begin{lstlisting}[title=Struktura argumentu komunikatu]
